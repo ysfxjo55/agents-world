@@ -88,7 +88,7 @@ test('Windows: our bin tools run as "node <path>", folder rules use Claude Code\
   const { toolCommand, rulePath, resolveBin } = await import('../server/util.js');
   assert.equal(toolCommand('C:\\app\\bin\\remember', 'win32'), 'node C:/app/bin/remember');
   assert.equal(toolCommand('/app/bin/remember', 'darwin'), '/app/bin/remember');
-  assert.equal(rulePath('C:\\Users\\USER3\\agents-world\\data\\bella\\memory', 'win32'), '/c/Users/USER3/agents-world/data/bella/memory');
+  assert.equal(rulePath('C:\\Users\\Sam\\agents-world\\data\\bella\\memory', 'win32'), '/c/Users/Sam/agents-world/data/bella/memory');
   assert.equal(rulePath('/Users/u/data', 'darwin'), '/Users/u/data');
   assert.deepEqual(resolveBin('C:\\t\\fake.mjs', ['-p'], { platform: 'win32' }), { cmd: process.execPath, args: ['C:\\t\\fake.mjs', '-p'] });
   assert.deepEqual(resolveBin('/t/fake.cjs', [], { platform: 'darwin' }), { cmd: process.execPath, args: ['/t/fake.cjs'] });
