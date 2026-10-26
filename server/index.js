@@ -21,7 +21,7 @@ import { trashSession, listTrash, restoreSession, emptyTrash } from './trash.js'
 import { claudeProcessPattern, sessionBusy, liveRuns } from './runs.js';
 import { config, saveName, saveSettings } from './config.js';
 import { detectEngines, engineSummary, setEngines, currentEngines, agentShown } from './engines.js';
-import { createUpdater, RESTART_CODE } from './updater.js';
+import { createUpdater, previewState, RESTART_CODE } from './updater.js';
 import { readAll, saveOne, resetOne } from './instructions.js';
 import { checkRequest, originAllowed, HttpError, safeDecode, ownTailnetIps } from './auth.js';
 import { body, rawBody, resolveCwd, isTodayChat, refreshUserPath, inlineScriptHashes } from './util.js';
@@ -195,7 +195,7 @@ async function handle(req, res) {
     if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
     return json(res, 200, { ...readAll(), shown: { bella: agentShown('bella'), interstellar: agentShown('interstellar') } });
   }
-  if (p === '/api/update' && !write) return json(res, 200, { ...updater.state, supervised: !!process.env.AGENT_WORLD_SUPERVISED });   // "Check again" in the guide
+  if (p === '/api/update' && !write) return json(res, 200, { ...(url.searchParams.has('preview') && !auth.remote ? previewState(updater.state) : updater.state), supervised: !!process.env.AGENT_WORLD_SUPERVISED });   // "Check again" in the guide
   if (await familyInboxRoute({ req, res, p, auth, json, body, dir: process.env.AGENT_WORLD_FAMILY_DIR || path.join(ROOT, 'data', 'family'), logAction })) return;
   fresh();
   if (await researchRoutes({ req, res, p, write, auth, json, body })) return;

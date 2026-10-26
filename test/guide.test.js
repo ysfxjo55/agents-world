@@ -283,3 +283,27 @@ test('Instructions panel: save, keep Bella findable, size limits, reset to defau
   resetOne('about', { places, saveAbout }); assert.equal(about, '');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('a git clone checks for updates with git (private repos work, never a login prompt); a ZIP install uses HTTPS', async () => {
+  const { latestFromGit, createUpdater } = await import('../server/updater.js');
+  const calls = [], run = (cmd, args) => { calls.push(args.join(' ')); return args[0] === 'show' ? (args[1].endsWith('package.json') ? '{"version":"0.2.2"}' : '## 0.2.2\n- test update\n') : ''; };
+  assert.deepEqual(latestFromGit('/x', run), { version: '0.2.2', changelog: '## 0.2.2\n- test update\n' });
+  assert.deepEqual(calls, ['fetch --quiet origin main', 'show origin/main:package.json', 'show origin/main:CHANGELOG.md']);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-gitup-')); fs.mkdirSync(path.join(root, '.git')); fs.writeFileSync(path.join(root, 'package.json'), '{"version":"0.2.1"}');
+  let https = 0;
+  const u = createUpdater({ root, run, doFetch: /** @type {any} */ (async () => { https++; return { ok: false, status: 404 }; }), log: () => {} });
+  await u.check();
+  assert.deepEqual([u.state.kind, u.state.available, u.state.latest, u.state.notes, https], ['git', true, '0.2.2', ['test update'], 0]);
+  const lines = [], fail = createUpdater({ root, run: () => { throw new Error('fatal: could not read Username\nmore'); }, log: (m) => lines.push(m) });
+  await fail.check(); assert.equal(fail.state.available, false); assert.deepEqual(lines, ['update check skipped: fatal: could not read Username']);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('?preview-update shows a pretend 9.9.9 with this copy\'s changelog lines, and installs nothing', async () => {
+  const { previewState } = await import('../server/updater.js');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-prev-'));
+  fs.writeFileSync(path.join(root, 'CHANGELOG.md'), '## 0.2.1\n- new panel\n## 0.2.0\n- updates\n');
+  const p = previewState({ current: '0.2.1', available: false, latest: null, notes: [] }, root);
+  assert.deepEqual([p.preview, p.available, p.latest, p.notes], [true, true, '9.9.9', ['new panel', 'updates']]);
+  fs.rmSync(root, { recursive: true, force: true });
+});

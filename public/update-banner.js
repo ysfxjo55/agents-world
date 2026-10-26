@@ -4,16 +4,18 @@ const isTop = (() => { try { return window.self === window.top; } catch { return
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const later = { get: () => { try { return localStorage.getItem('aw.updateLater'); } catch { return null; } }, set: (v) => { try { localStorage.setItem('aw.updateLater', v); } catch {} } };
 
+const preview = new URLSearchParams(location.search).has('preview-update');   // ?preview-update: see the box with a pretend version; nothing is installed
 async function show() {
-  const u = await fetch('/api/update').then(r => r.json()).catch(() => null);
-  if (!u?.available || later.get() === u.latest || document.getElementById('awUpdate')) return;
+  const u = await fetch('/api/update' + (preview ? '?preview=1' : '')).then(r => r.json()).catch(() => null);
+  if (!u?.available || (!u.preview && later.get() === u.latest) || document.getElementById('awUpdate')) return;
   const box = el('div', 'aw-update'); box.id = 'awUpdate'; box.setAttribute('role', 'status');
   box.append(el('b', '', `A new version is ready (${u.latest}).`));
   if (u.notes?.length) { box.append(el('span', '', " What's new:")); const ul = el('ul'); for (const n of u.notes) ul.append(el('li', '', n)); box.append(ul); }
   const msg = el('p', 'aw-msg'), row = el('div', 'aw-row');
   const go = el('button', 'aw-go', 'Update now'), no = el('button', 'aw-later', 'Later'); go.type = no.type = 'button';
-  no.onclick = () => { later.set(u.latest); box.remove(); };
+  no.onclick = () => { if (!u.preview) later.set(u.latest); box.remove(); };
   go.onclick = async () => {
+    if (u.preview) { msg.textContent = 'This is a preview, nothing was installed.'; return; }
     go.disabled = no.disabled = true; msg.textContent = 'Updating... this can take a minute.';
     const r = await fetch('/api/update/install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(x => x.json()).catch(() => null);
     if (!r?.ok) { msg.textContent = r?.error || 'The update did not work. Try again later.'; go.disabled = no.disabled = false; return; }

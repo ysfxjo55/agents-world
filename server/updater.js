@@ -57,7 +57,17 @@ export async function fetchLatest({ doFetch = fetch, repo = REPO, branch = BRANC
 }
 
 const hashFile = (f) => { try { return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'); } catch { return ''; } };
-const runDefault = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, encoding: 'utf8', timeout: 300_000, windowsHide: true, shell: process.platform === 'win32' && cmd === 'npm' });   // npm is npm.cmd on Windows; the arguments are fixed, never user text
+// Git never asks for a login here: no terminal prompt and no Git Credential Manager window. It uses the login you already saved, or fails quietly.
+const QUIET_GIT = { GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' };
+const runDefault = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, encoding: 'utf8', timeout: 300_000, windowsHide: true, env: { ...process.env, ...QUIET_GIT }, shell: process.platform === 'win32' && cmd === 'npm' });
+
+/** A git clone asks git for the newest version (works for a private repo you are logged in to); a ZIP install asks GitHub over HTTPS. */
+export function latestFromGit(root = ROOT, run = runDefault) {
+  run('git', ['fetch', '--quiet', 'origin', BRANCH], root);
+  const version = String(JSON.parse(run('git', ['show', `origin/${BRANCH}:package.json`], root)).version || '');
+  let changelog = ''; try { changelog = run('git', ['show', `origin/${BRANCH}:CHANGELOG.md`], root); } catch { /* notes are optional */ }
+  return { version, changelog };
+}   // npm is npm.cmd on Windows; the arguments are fixed, never user text
 
 /** git clone: refuse when you changed app files, else fast-forward only. Returns a short message.
  * A changed package-lock.json is not your work (an older npm rewrites it during install), so it is reset and rebuilt after the pull. */
@@ -113,19 +123,19 @@ export async function updateZip(root = ROOT, { doFetch = fetch, run = runDefault
 
 /**
  * The update state the page shows, plus check() and install(). Quiet when offline: one log line, no banner.
- * @param {{ settings?: { check?: boolean, auto?: boolean }, busy?: () => boolean, onInstalled?: () => void, doFetch?: typeof fetch, root?: string, log?: (m: string) => void }} opts
+ * @param {{ settings?: { check?: boolean, auto?: boolean }, busy?: () => boolean, onInstalled?: () => void, doFetch?: typeof fetch, root?: string, log?: (m: string) => void, run?: (cmd: string, args: string[], cwd: string) => string }} opts
  */
-export function createUpdater({ settings = {}, busy = () => false, onInstalled = () => {}, doFetch = fetch, root = ROOT, log = (m) => console.log(m) } = {}) {
+export function createUpdater({ settings = {}, busy = () => false, onInstalled = () => {}, doFetch = fetch, root = ROOT, log = (m) => console.log(m), run = runDefault } = {}) {
   const state = { enabled: settings.check !== false, auto: settings.auto === true, current: currentVersion(root), latest: null, notes: [], available: false, kind: installKind(root), installing: false, error: null, checkedAt: null };
   async function check() {
     if (!state.enabled) return state;
     try {
-      const { version, changelog } = await fetchLatest({ doFetch });
+      const { version, changelog } = state.kind === 'git' ? latestFromGit(root, run) : await fetchLatest({ doFetch });
       state.latest = version; state.checkedAt = Date.now(); state.error = null;
       state.available = compareVersions(version, state.current) > 0;
       state.notes = state.available ? notesFor(changelog, state.current, version) : [];
       if (state.available && state.auto && !busy()) await install();
-    } catch (e) { log(`update check skipped: ${e.message}`); }
+    } catch (e) { log(`update check skipped: ${String(e.message).split('\n')[0]}`); }
     return state;
   }
   async function install() {
@@ -133,11 +143,17 @@ export function createUpdater({ settings = {}, busy = () => false, onInstalled =
     if (busy()) return { ok: false, error: 'An agent is still working. Try again when it has finished.' };
     state.installing = true; state.error = null;
     try {
-      const message = state.kind === 'git' ? updateGit(root) : await updateZip(root, { doFetch });
+      const message = state.kind === 'git' ? updateGit(root, run) : await updateZip(root, { doFetch, run });
       log(message); onInstalled();
       return { ok: true, message };
     } catch (e) { state.error = e.message; return { ok: false, error: e.message }; }
     finally { state.installing = false; }
   }
   return { state, check, install };
+}
+
+/** For http://localhost:4321/?preview-update: the real banner with a pretend newer version and this copy's newest changelog lines. Nothing is installed. */
+export function previewState(state, root = ROOT) {
+  let changelog = ''; try { changelog = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'); } catch { /* none */ }
+  return { ...state, preview: true, available: true, latest: '9.9.9', notes: notesFor(changelog, '0.0.0', state.current).slice(0, 6) };
 }
