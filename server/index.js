@@ -97,6 +97,7 @@ function broadcast() {
 let debounce;
 const kick = () => { if (!clients.size) return; clearTimeout(debounce); debounce = setTimeout(refresh, 700); };
 for (const dir of [CLAUDE_ROOT, OPENCODE_DIR, AGENTS_DIR]) {
+  if (!fs.existsSync(dir)) continue;   // that program is not installed (or never ran): nothing to watch, nothing to say
   try { fs.watch(dir, { recursive: true }, kick); } catch (e) { console.warn('watch failed for', dir, e.message); }
 }
 setInterval(() => { if (clients.size) refresh(); }, 2000);   // drives time-based status changes; idle when nobody is watching

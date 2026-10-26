@@ -59,13 +59,15 @@ export async function fetchLatest({ doFetch = fetch, repo = REPO, branch = BRANC
 const hashFile = (f) => { try { return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'); } catch { return ''; } };
 const runDefault = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, encoding: 'utf8', timeout: 300_000, windowsHide: true, shell: process.platform === 'win32' && cmd === 'npm' });   // npm is npm.cmd on Windows; the arguments are fixed, never user text
 
-/** git clone: refuse when you changed tracked files, else fast-forward only. Returns a short message. */
+/** git clone: refuse when you changed app files, else fast-forward only. Returns a short message.
+ * A changed package-lock.json is not your work (an older npm rewrites it during install), so it is reset and rebuilt after the pull. */
 export function updateGit(root = ROOT, run = runDefault) {
-  const changed = run('git', ['status', '--porcelain', '--untracked-files=no'], root).trim();
-  if (changed) throw new Error('You changed some app files, so I did not update. Undo your changes (or commit them), then try again.');
+  const changed = run('git', ['status', '--porcelain', '--untracked-files=no'], root).split('\n').map(l => l.slice(3).trim()).filter(Boolean);
+  if (changed.some(f => f !== 'package-lock.json')) throw new Error('You changed some app files, so I did not update. Undo your changes (or commit them), then try again.');
+  if (changed.length) run('git', ['checkout', '--', 'package-lock.json'], root);
   const lock = hashFile(path.join(root, 'package-lock.json'));
   run('git', ['pull', '--ff-only', 'origin', BRANCH], root);
-  if (hashFile(path.join(root, 'package-lock.json')) !== lock) run('npm', ['install', '--no-audit', '--no-fund'], root);
+  if (changed.length || hashFile(path.join(root, 'package-lock.json')) !== lock) run('npm', ['ci', '--no-audit', '--no-fund'], root);
   return 'Updated with git.';
 }
 
@@ -104,7 +106,7 @@ export async function updateZip(root = ROOT, { doFetch = fetch, run = runDefault
     const lock = hashFile(path.join(root, 'package-lock.json'));
     const backup = path.join(root, 'data', 'backups', `update-${currentVersion(root)}-${Date.now()}`);
     const n = copyRelease(top, root, backup);
-    if (hashFile(path.join(root, 'package-lock.json')) !== lock) run('npm', ['install', '--no-audit', '--no-fund'], root);
+    if (hashFile(path.join(root, 'package-lock.json')) !== lock) run('npm', ['ci', '--no-audit', '--no-fund'], root);
     return `Updated ${n} files. The old ones are in ${path.relative(root, backup)}.`;
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }

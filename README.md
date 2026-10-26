@@ -32,7 +32,7 @@ The free Claude plan does not include Claude Code. OpenCode works for plain chat
 ```
 git clone https://github.com/ysfxjo55/agents-world.git
 cd agents-world
-npm install
+npm ci
 npm start
 ```
 Then open http://localhost:4321. Or double-click **Agents World.command** (it installs and opens the page for you).
@@ -41,7 +41,7 @@ Then open http://localhost:4321. Or double-click **Agents World.command** (it in
 ```
 git clone https://github.com/ysfxjo55/agents-world.git
 cd agents-world
-npm install
+npm ci
 npm start
 ```
 Then open http://localhost:4321. Or double-click **Agents World.cmd**.
