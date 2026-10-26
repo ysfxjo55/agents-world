@@ -1,5 +1,5 @@
 #!/bin/zsh
-# macOS: double-click to start Agent World and open it in your browser.
+# macOS: double-click to start Agents World and open it in your browser.
 cd "$(dirname "$0")" || exit 1
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 if ! command -v node >/dev/null; then

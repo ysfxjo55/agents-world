@@ -28,10 +28,10 @@ test('the server tells the page the run id immediately, so Stop works before the
   assert.match(server, /t: 'accepted', runId/);
 });
 
-test('every page uses the one app name, Agent World', () => {
+test('every page uses the one app name, Agents World', () => {
   for (const f of ['index', 'chat', 'family', 'research', 'today']) {
     const html = fs.readFileSync(new URL(`../public/${f}.html`, import.meta.url), 'utf8');
-    assert.match(html, /<title>[^<]*Agent World[^<]*<\/title>/, f);
+    assert.match(html, /<title>[^<]*Agents World[^<]*<\/title>/, f);
   }
 });
 

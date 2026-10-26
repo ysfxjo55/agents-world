@@ -1,6 +1,6 @@
 # Starter files: make the agents yours
 
-On the first start, Agent World copies these files to places it uses. It never overwrites a file that already exists.
+On the first start, Agents World copies these files to places it uses. It never overwrites a file that already exists.
 
 | Starter file | Copied to | What it is |
 |---|---|---|

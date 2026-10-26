@@ -68,3 +68,10 @@ test('Windows: an npm .cmd tool is started as node + its script, never through a
   assert.equal(resolveBin('claude', [], io).cmd, 'C:\\bin\\claude.exe', 'a real .exe wins');
   assert.deepEqual(resolveBin('claude', ['x'], { platform: 'darwin' }), { cmd: 'claude', args: ['x'] });
 });
+
+test('new AGENTS_WORLD_* setting names work, and an old AGENT_WORLD_* name that is set wins', async () => {
+  const { applyNewEnvNames } = await import('../server/env-names.js');
+  const env = applyNewEnvNames({ AGENTS_WORLD_PORT: '4400', AGENTS_WORLD_HOSTS: 'new', AGENT_WORLD_HOSTS: 'old' });
+  assert.equal(env.AGENT_WORLD_PORT, '4400');
+  assert.equal(env.AGENT_WORLD_HOSTS, 'old');
+});

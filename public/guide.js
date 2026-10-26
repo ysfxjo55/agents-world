@@ -108,7 +108,7 @@ function engineList() {
     const d = el('details', 'gd-eng' + (ok ? ' ok' : '')); d.open = (!ok && id !== 'opencode' && !engineWorks(found)) || (lost && !f.loggedIn);
     d.append(el('summary', '', `${e.name}: ${ok ? (f.loggedIn ? 'ready' : 'installed') : lost ? `installed, but ${fx.where} can't find it yet` : f.installed ? 'installed, not logged in' : 'not found'}`));
     if (lost) {                       // installed in a folder that is not on PATH: typing its name in a terminal fails
-      d.append(el('p', 'gd-soft', `It is in ${f.dir}, which is not on your PATH. Agent World can still run it.`));
+      d.append(el('p', 'gd-soft', `It is in ${f.dir}, which is not on your PATH. Agents World can still run it.`));
       d.append(el('p', '', `1. Fix it for good (paste in ${fx.shell}):`)); d.append(copy(fx.fix));
       d.append(el('p', '', `2. Open a NEW ${fx.shell} window, then log in: ${e.loginHow}`)); d.append(copy(e.login));
       d.append(el('p', 'gd-soft', 'Or log in right now without step 1:')); d.append(copy(fx.run));
@@ -125,7 +125,7 @@ function engineList() {
   const go = el('button', 'gd-btn primary', 'Continue'); go.type = 'button'; go.disabled = !engineWorks(found); go.onclick = () => feed({ type: 'engine-ok' });
   again.onclick = async () => { again.disabled = true; const r = await fetch('/api/engines').then(x => x.json()).catch(() => null); if (r) cfg.engines = r; shown = null; render(); };
   row.append(go, again); box.append(row);
-  if (!engineWorks(found)) box.append(el('p', 'gd-soft', 'After installing, run the login command once, then press "Check again". Still "not found"? Restart Agent World.'));
+  if (!engineWorks(found)) box.append(el('p', 'gd-soft', 'After installing, run the login command once, then press "Check again". Still "not found"? Restart Agents World.'));
   return box;
 }
 function notifyHelp() {
@@ -198,7 +198,7 @@ function resumeWait() {           // reloaded while waiting: check once whether 
 function noEngineNote() {        // no AI program at all: say so on the page, guide or not
   if (cfg?.engines?.any !== false || document.getElementById('gdNoEngine')) return;
   const n = el('div', 'gd-noengine'); n.id = 'gdNoEngine'; n.setAttribute('role', 'status');
-  n.append(el('b', '', 'No AI program found. '), document.createTextNode('Agent World runs Claude Code or Codex with your own subscription. Install one: '));
+  n.append(el('b', '', 'No AI program found. '), document.createTextNode('Agents World runs Claude Code or Codex with your own subscription. Install one: '));
   for (const [id, href] of [['claude', ENGINES.claude.docs], ['codex', ENGINES.codex.docs]]) { const a = el('a', '', ENGINES[id].name); a.href = href; a.target = '_blank'; a.rel = 'noopener'; n.append(a, document.createTextNode(id === 'claude' ? ' or ' : '. Then press "? Guide".')); }
   document.body.append(n);
 }

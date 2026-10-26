@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="10 10 180 180" role="img" aria-label="Agent World">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="10 10 180 180" role="img" aria-label="Agents World">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#3a3a40"/>

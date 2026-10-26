@@ -1,3 +1,4 @@
+import './env-names.js';   // first: new AGENTS_WORLD_* names also set the old AGENT_WORLD_* ones before anything reads them
 import { modelRouterRoute } from './model-router.js';
 import { usageRoute } from './usage-ledger.js';
 import http from 'node:http';
@@ -47,7 +48,7 @@ if (process.argv.includes('--snapshot')) {
 if (process.argv.includes('--test-notify')) {             // npm run test-notify: send one alert the way a finished session would
   const n = makeNotifier(config.notify);
   if (!n) console.log('All alerts are off in data/config.json ("notify").');
-  else console.log('sent:', await n({ title: 'Agent World', message: 'Finished: this is a test alert' }));
+  else console.log('sent:', await n({ title: 'Agents World', message: 'Finished: this is a test alert' }));
   process.exit(0);
 }
 
@@ -106,7 +107,7 @@ function openTerminal(cwd, resume) {
   if (process.platform === 'darwin') { execFile('osascript', ['-e', `tell application "Terminal"\nactivate\ndo script "${asEsc}"\nend tell`], (err) => err && console.error('osascript:', err.message)); return null; }
   if (process.platform === 'win32') {
     // A new Command Prompt window in that folder. `resume` is built from checked ids and agent names only, never free text.
-    spawn('cmd.exe', ['/c', 'start', 'Agent World', 'cmd.exe', '/k', resume], { cwd, detached: true, stdio: 'ignore' }).on('error', (e) => console.error('terminal:', e.message)).unref();
+    spawn('cmd.exe', ['/c', 'start', 'Agents World', 'cmd.exe', '/k', resume], { cwd, detached: true, stdio: 'ignore' }).on('error', (e) => console.error('terminal:', e.message)).unref();
     return null;
   }
   return `Opening a terminal is only supported on macOS and Windows. Run this yourself: ${cmd}`;
@@ -244,7 +245,7 @@ async function handle(req, res) {
     if (p === '/api/notify/test') {                                    // the first-steps guide: "Send a test alert"
       if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
       if (!notifier) return json(res, 200, { ok: false, error: 'Alerts are off in data/config.json ("notify").' });
-      await notifier({ title: 'Agent World', message: 'Finished: this is a test alert' });
+      await notifier({ title: 'Agents World', message: 'Finished: this is a test alert' });
       return json(res, 200, { ok: true });
     }
     if (p === '/api/family/stop') return json(res, 200, { ok: family.stop() });
@@ -461,7 +462,7 @@ if (!process.env.AGENT_WORLD_DRYRUN) { try { installAgents(); installStarter(ROO
 const resumeLoop = () => { try { const n = resumeOrphans(); if (n) console.log(`resumed ${n} research job(s) that were interrupted`); } catch (e) { console.error('resume orphans:', e.message); } };
 setTimeout(resumeLoop, 8000).unref(); setInterval(resumeLoop, 60_000).unref();   // a runner that died at 3 am is restarted within a minute
 server.listen(PORT, HOST, () => {
-  console.log(`Agent World running at http://localhost:${PORT}`);
+  console.log(`Agents World running at http://localhost:${PORT}`);
   // At login, open the Today page once a day (macOS only). Wait a moment so the page has a server to talk to.
   const delay = Number(process.env.AGENT_WORLD_AUTOOPEN_DELAY_MS) || 10000;
   if (config.today) setTimeout(() => autoOpen({   // the Today page is an opt-in extra ("today": true in data/config.json)

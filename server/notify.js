@@ -21,7 +21,7 @@ export function createDoneWatcher({ notify, nameOf = (s) => s.cwd, quiet = (_s) 
       if (quiet(s)) continue;
       if (now - (sentAt.get(s.key) ?? -Infinity) < gapMs) continue;
       sentAt.set(s.key, now);
-      const alert = { title: clip(nameOf(s) || 'Agent World', 60), message: `Finished: ${clip(s.title || 'your task', 100)}` };
+      const alert = { title: clip(nameOf(s) || 'Agents World', 60), message: `Finished: ${clip(s.title || 'your task', 100)}` };
       done.push(alert);
       try { notify(alert)?.catch?.(() => {}); } catch (e) { console.warn('notify failed:', e.message); }
     }
@@ -32,7 +32,7 @@ export function createDoneWatcher({ notify, nameOf = (s) => s.cwd, quiet = (_s) 
 // AppleScript reads the text from its arguments, so a session name can never become code.
 const MAC_SCRIPT = 'on run argv\ndisplay notification (item 2 of argv) with title (item 1 of argv)\nend run';
 // PowerShell reads the text from environment variables and XML-escapes it. Windows only shows toasts from a registered app,
-// so the toast is sent under PowerShell's own app id (a made-up name like "Agent World" is silently dropped).
+// so the toast is sent under PowerShell's own app id (a made-up name like "Agents World" is silently dropped).
 const WIN_SCRIPT = [
   '[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null',
   '$e = { param($t) [System.Security.SecurityElement]::Escape($t) }',

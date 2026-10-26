@@ -8,12 +8,12 @@ export const KEY = 'aw.guide';
 // accepts(ev, state): true when this event finishes the step.
 export const STEPS = [
   { id: 'welcome', page: 'any', target: null, action: 'Start the tour', choice: 'start',
-    title: 'Welcome to Agent World',
+    title: 'Welcome to Agents World',
     text: 'See all your AI sessions in one place, and get told the moment one finishes. This short tour shows you how, one step at a time. You do each step yourself.',
     accepts: (ev) => ev.type === 'next' },
   { id: 'connect', page: 'any', target: null, engines: true,
     title: 'Connect your AI',
-    text: 'Agent World has no AI account of its own. It runs Claude Code or Codex on this computer, logged in with your own subscription. One is enough. It never asks for your password or keys.',
+    text: 'Agents World has no AI account of its own. It runs Claude Code or Codex on this computer, logged in with your own subscription. One is enough. It never asks for your password or keys.',
     accepts: (ev) => ev.type === 'engine-ok' },
   { id: 'name', page: 'any', target: null, input: 'name',
     title: 'What should the agents call you?',

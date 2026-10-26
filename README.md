@@ -1,22 +1,22 @@
 <p align="center">
-  <img src="public/logo.svg" width="128" alt="Agent World logo">
+  <img src="public/logo.svg" width="128" alt="Agents World logo">
 </p>
 
-# Agent World
+# Agents World
 
 **See all your AI sessions in one place, and get told the moment one finishes.**
 
-Agent World is a local web app for people who use AI coding agents. It finds your **Claude Code**, **Codex** and **OpenCode** sessions (also the ones you started in a normal terminal) and shows them as a small 3D world: every project is an island, every session a building, and a robot works, waits or sleeps depending on what the agent is doing. When a session finishes, you get a desktop notification. There is also a chat page to read and continue any session, two manager agents (Bella and Interstellar) who can start other agents for you, an overnight Research Lab and an optional Today page.
+Agents World is a local web app for people who use AI coding agents. It finds your **Claude Code**, **Codex** and **OpenCode** sessions (also the ones you started in a normal terminal) and shows them as a small 3D world: every project is an island, every session a building, and a robot works, waits or sleeps depending on what the agent is doing. When a session finishes, you get a desktop notification. There is also a chat page to read and continue any session, two manager agents (Bella and Interstellar) who can start other agents for you, an overnight Research Lab and an optional Today page.
 
 Everything runs on your own computer. Nothing is sent anywhere except what the agents themselves send to their AI providers.
 
 ## What you need
 - **Node.js 22.5 or newer** (from https://nodejs.org).
-- At least one of these, installed and logged in: **Claude Code** (`claude`), **Codex** (`codex`), **OpenCode** (`opencode`). Agent World reads their session files and starts them for you. It does not have its own AI account. See "Which subscription do I need?" below.
+- At least one of these, installed and logged in: **Claude Code** (`claude`), **Codex** (`codex`), **OpenCode** (`opencode`). Agents World reads their session files and starts them for you. It does not have its own AI account. See "Which subscription do I need?" below.
 - macOS or Windows. Linux works too, but desktop notifications and "open in terminal" are skipped there.
 
 ## Which subscription do I need?
-**One is enough.** Agent World never asks for your password or API key: it runs the AI programs you already use, logged in with your own account.
+**One is enough.** Agents World never asks for your password or API key: it runs the AI programs you already use, logged in with your own account.
 
 | You have | Install | Log in | What you get |
 |---|---|---|---|
@@ -30,28 +30,30 @@ The free Claude plan does not include Claude Code. OpenCode works for plain chat
 
 **macOS**
 ```
-git clone <this repo> agent-world
-cd agent-world
+git clone https://github.com/ysfxjo55/agents-world.git
+cd agents-world
 npm install
 npm start
 ```
-Then open http://localhost:4321. Or double-click **Agent World.command** (it installs and opens the page for you).
+Then open http://localhost:4321. Or double-click **Agents World.command** (it installs and opens the page for you).
 
 **Windows**
 ```
-git clone <this repo> agent-world
-cd agent-world
+git clone https://github.com/ysfxjo55/agents-world.git
+cd agents-world
 npm install
 npm start
 ```
-Then open http://localhost:4321. Or double-click **Agent World.cmd**.
+Then open http://localhost:4321. Or double-click **Agents World.cmd**.
 
-**Windows: "claude is not recognized" after installing Claude Code.** The official installer puts `claude.exe` in `C:\Users\<you>\.local\bin` and may warn that this folder is not on your PATH. Agent World finds it there anyway, and the guide's "Connect your AI" step shows the fix. To fix it yourself, paste this in PowerShell, then open a NEW PowerShell window and run `claude` to log in:
+**Windows: "claude is not recognized" after installing Claude Code.** The official installer puts `claude.exe` in `C:\Users\<you>\.local\bin` and may warn that this folder is not on your PATH. Agents World finds it there anyway, and the guide's "Connect your AI" step shows the fix. To fix it yourself, paste this in PowerShell, then open a NEW PowerShell window and run `claude` to log in:
 ```
 [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","User") + ";$env:USERPROFILE\.local\bin", "User")
 ```
 
 The app only listens on 127.0.0.1, so other computers on your network cannot reach it.
+
+To use another port: `AGENTS_WORLD_PORT=4400 npm start`. (Settings that start with the old name `AGENT_WORLD_` still work.)
 
 ### First steps guide
 On your first visit a short guide opens. You learn the app by doing each step yourself: choose an empty world or your existing sessions, connect your AI (it shows which programs it found and how to install or log in to the others), set your name, start a small read-only task on the Chat page, wait for the "task done" alert, see the access levels, and find your new session in the world. Each step moves on only when you do it (or press "Skip this step"). Esc closes it, a reload continues where you stopped, and the **? Guide** button (top right on the World and Chat pages) starts it again. Progress is kept in your browser; your name is saved in `data/config.json`.
@@ -67,7 +69,7 @@ Copy `config.example.json` to `data/config.json` and edit it. Every setting is o
   - `"ntfy": "https://ntfy.sh/<your-topic>"` also sends each alert to your phone with the free ntfy app. Off when empty. Anyone who knows the topic name can read it, so pick a long random name.
 - `links`: your own shortcuts in the sidebar (`https://` only).
 - `projectNames`: a nicer name for a project folder.
-- `showSince`: "start fresh". The world and the lists only show sessions active since this moment (a date like `"2026-10-26"` or a number in ms; `0` shows everything). Older sessions are only hidden, never deleted: tick "Show older & archived" to see them. The guide's first step sets it for you. For a quick test you can also start with `AGENT_WORLD_SHOW_SINCE=now npm start`.
+- `showSince`: "start fresh". The world and the lists only show sessions active since this moment (a date like `"2026-10-26"` or a number in ms; `0` shows everything). Older sessions are only hidden, never deleted: tick "Show older & archived" to see them. The guide's first step sets it for you. For a quick test you can also start with `AGENTS_WORLD_SHOW_SINCE=now npm start`.
 - `agents`: which program Bella and Interstellar run on, for example `{"interstellar": {"engine": "claude"}}`. Values: `"claude"` or `"codex"`. If that program is not installed, the other one is used. Default: Bella on Claude Code, Interstellar on Codex; with only one program installed, both use it.
 - `today`: `true` turns on the Today page (a daily plan page that opens once a day). Off by default.
 - `hosts` and `owner`: only for private remote access with Tailscale (see below). Leave them empty otherwise.
@@ -75,7 +77,7 @@ Copy `config.example.json` to `data/config.json` and edit it. Every setting is o
 To change Bella, Interstellar or your other agents (names, personality, rules), see [starter/README.md](starter/README.md).
 
 ## Safety: read this before you use the chat
-The agents can run commands on your computer. Agent World makes this visible and asks first, but you decide what each chat may do. The **access mode** (top right of the chat page) sets the limit for Claude Code:
+The agents can run commands on your computer. Agents World makes this visible and asks first, but you decide what each chat may do. The **access mode** (top right of the chat page) sets the limit for Claude Code:
 
 | Access mode | What the agent may do |
 |---|---|
@@ -91,14 +93,14 @@ The agents can run commands on your computer. Agent World makes this visible and
 - Anything you paste into a chat, and any web page an agent reads, can try to trick the agent ("prompt injection"). Keep the access mode as low as the task allows.
 
 ## Private remote access (optional, Tailscale)
-To use Agent World from your phone, use Tailscale (a private, encrypted network of only your own devices). Never expose port 4321 to the internet, and never use `tailscale funnel` (that makes it public).
+To use Agents World from your phone, use Tailscale (a private, encrypted network of only your own devices). Never expose port 4321 to the internet, and never use `tailscale funnel` (that makes it public).
 1. Install Tailscale on the computer and the phone, signed in to the same account.
 2. Put your computer's Tailscale name in `hosts` and your Tailscale login in `owner` in `data/config.json`.
 3. Run `tailscale serve --bg 4321` and open `https://<your-computer>.<tailnet>.ts.net` on the phone.
 Remote requests can read and chat, but Full access, Empty Trash and starting agents with high access only work on the computer itself.
 
 ## License
-Agent World is free software under the GNU AGPL-3.0. See [LICENSE](LICENSE).
+Agents World is free software under the GNU AGPL-3.0. See [LICENSE](LICENSE).
 
 ## How it works
 
@@ -110,7 +112,7 @@ Tracking covers new Claude Code, Codex and OpenCode runs launched through Bella,
 
 Codex exec completion counts are cumulative for its conversation. The collector snapshots that app session's native counter before spawning a resumed run, then records the difference. Missing/reset baselines stay unknown. Older ledger rows are reconciled only when their end counters match the native session record; otherwise their counts are excluded. The original ledger is preserved. Expand **Check this count** under a Codex run to see its before/after arithmetic. Native counter reads target only the requested session, never credentials or configuration.
 
-Usage metadata is appended locally to git-ignored `data/usage.jsonl`, without prompts, responses or credentials. `AGENT_WORLD_USAGE_FILE` selects an isolated file for testing. Tests use fake CLIs and do not write real usage history by default. The authenticated read-only `/api/usage` endpoint reads at most the latest 32 MiB and reports when earlier history is omitted.
+Usage metadata is appended locally to git-ignored `data/usage.jsonl`, without prompts, responses or credentials. `AGENTS_WORLD_USAGE_FILE` selects an isolated file for testing. Tests use fake CLIs and do not write real usage history by default. The authenticated read-only `/api/usage` endpoint reads at most the latest 32 MiB and reports when earlier history is omitted.
 
 ### Data it reads
 | Source | Where | Notes |

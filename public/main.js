@@ -43,7 +43,7 @@ function apply(snap) {
   renderSidebar(list); renderCounts(list); refreshCard(); $('empty').hidden = list.length > 0;
   if (!state.framed && (list.length || snap.interstellar)) { state.framed = true; setTimeout(() => world.home(), 300); }
   const needs = list.filter(s => s.status === 'needs').length;
-  document.title = needs ? `(${needs}) Agent World` : 'Agent World';
+  document.title = needs ? `(${needs}) Agents World` : 'Agents World';
 }
 const find = (key) => state.snap?.sessions.find(s => s.key === key);
 const findAgent = (key) => (key === 'interstellar' ? state.snap?.interstellar : key === 'bella' ? state.snap?.bella : key === 'lab' ? state.snap?.lab : state.snap?.agents?.find(a => 'agent:' + a.name === key));

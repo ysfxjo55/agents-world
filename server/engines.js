@@ -4,7 +4,7 @@ import path from 'node:path';
 import { knownDirs, savedUserPath } from './util.js';
 
 // Which AI programs ("engines") are on this computer, and which one each manager agent uses.
-// Agent World has no AI account of its own: it runs Claude Code, Codex or OpenCode, logged in with your own subscription.
+// Agents World has no AI account of its own: it runs Claude Code, Codex or OpenCode, logged in with your own subscription.
 // We only look for files. We never read, store or send a password, key or token.
 
 export const ENGINE_NAMES = { claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode' };

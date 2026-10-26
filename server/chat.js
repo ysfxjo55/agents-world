@@ -120,7 +120,7 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
     if (!fs.existsSync(cwd)) throw new Error('Interstellar folder is missing: ' + cwd);
   }
   // the agent you start must not inherit Bella's own settings
-  const env = Object.fromEntries(Object.entries(withToolPath(process.env)).filter(([k]) => !k.startsWith('AGENT_WORLD_')));
+  const env = Object.fromEntries(Object.entries(withToolPath(process.env)).filter(([k]) => !k.startsWith('AGENT_WORLD_') && !k.startsWith('AGENTS_WORLD_')));
   env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = String(COMPACT_TOKENS);       // Claude Code reads this; see COMPACT_TOKENS
   let runToken = null;
   if (agent === 'bella' && tool === 'claude') { env.BELLA_MAX_MODE = mode; runToken = env.BELLA_RUN_TOKEN = issueRunToken(mode); }   // only on Claude Code, where her tool rules limit what she runs   // BELLA_MAX_MODE is only informational; the server trusts the token and clamps what she may start
