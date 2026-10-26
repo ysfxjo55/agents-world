@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.svg" width="128" alt="Agent World logo">
+</p>
+
 # Agent World
 
 **See all your AI sessions in one place, and get told the moment one finishes.**

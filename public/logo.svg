@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="10 10 180 180" role="img" aria-label="Agent World">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3a40"/>
+      <stop offset="1" stop-color="#151518"/>
+    </linearGradient>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#c9c9cf"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="180" height="180" rx="44" fill="url(#bg)" stroke="#4a4a52" stroke-width="1.5"/>
+  <path fill="#5e5e66" d="M115.2 79.7 L133.3 93.1 L164.9 96.3 L158.8 112.1 L176.5 125.6 L149.9 134.7 L143.3 150.4 L111.7 147.4 L84.8 156.3 L66.7 142.9 L35.1 139.7 L41.2 123.9 L23.5 110.4 L50.1 101.3 L56.7 85.6 L88.3 88.6 Z"/>
+  <path fill="url(#top)" d="M115.2 65.7 L133.3 79.1 L164.9 82.3 L158.8 98.1 L176.5 111.6 L149.9 120.7 L143.3 136.4 L111.7 133.4 L84.8 142.3 L66.7 128.9 L35.1 125.7 L41.2 109.9 L23.5 96.4 L50.1 87.3 L56.7 71.6 L88.3 74.6 Z"/>
+  <path fill="#ffffff" d="M62 98 L74 92 L86 98 L74 104 Z"/>
+  <path fill="#a9a9b1" d="M62 98 L74 104 L74 116 L62 110 Z"/>
+  <path fill="#6f6f78" d="M86 98 L74 104 L74 116 L86 110 Z"/>
+  <path fill="#ffffff" d="M114 96 L126 90 L138 96 L126 102 Z"/>
+  <path fill="#a9a9b1" d="M114 96 L126 102 L126 112 L114 106 Z"/>
+  <path fill="#6f6f78" d="M138 96 L126 102 L126 112 L138 106 Z"/>
+  <path fill="#ffffff" d="M88 78 L100 72 L112 78 L100 84 Z"/>
+  <path fill="#a9a9b1" d="M88 78 L100 84 L100 112 L88 106 Z"/>
+  <path fill="#6f6f78" d="M112 78 L100 84 L100 112 L112 106 Z"/>
+  <line x1="100" y1="76" x2="100" y2="50" stroke="#d6d6dc" stroke-width="3"/>
+  <circle cx="100" cy="46" r="10" fill="#ffffff" fill-opacity="0.18"/>
+  <circle cx="100" cy="46" r="5.5" fill="#ffffff"/>
+</svg>
