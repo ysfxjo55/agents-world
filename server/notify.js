@@ -31,13 +31,14 @@ export function createDoneWatcher({ notify, nameOf = (s) => s.cwd, quiet = (_s) 
 
 // AppleScript reads the text from its arguments, so a session name can never become code.
 const MAC_SCRIPT = 'on run argv\ndisplay notification (item 2 of argv) with title (item 1 of argv)\nend run';
-// PowerShell reads the text from environment variables and XML-escapes it.
+// PowerShell reads the text from environment variables and XML-escapes it. Windows only shows toasts from a registered app,
+// so the toast is sent under PowerShell's own app id (a made-up name like "Agent World" is silently dropped).
 const WIN_SCRIPT = [
   '[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null',
   '$e = { param($t) [System.Security.SecurityElement]::Escape($t) }',
   '$xml = New-Object Windows.Data.Xml.Dom.XmlDocument',
   '$xml.LoadXml("<toast><visual><binding template=\'ToastGeneric\'><text>$(& $e $env:AW_TITLE)</text><text>$(& $e $env:AW_MESSAGE)</text></binding></visual></toast>")',
-  '[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Agent World").Show([Windows.UI.Notifications.ToastNotification]::new($xml))',
+  '[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier(\'{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe\').Show([Windows.UI.Notifications.ToastNotification]::new($xml))',
 ].join('; ');
 
 /** @typedef {(cmd: string, args: string[], opts: object, cb: (err: Error | null) => void) => unknown} Runner */
