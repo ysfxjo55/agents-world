@@ -10,8 +10,8 @@ const alive = pid => { try { process.kill(pid, 0); return true; } catch { return
 
 test('callback failures kill every engine before releasing the run', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'start-failure-'));
-  const bin = path.join(dir, 'hang');
-  fs.writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' '{"type":"thread.started","thread_id":"test"}' '{"type":"step_start","sessionID":"test"}'\nexec sleep 30\n`, { mode: 0o755 });
+  const bin = path.join(dir, 'hang.mjs');   // a Node fake, so it also runs on Windows
+  fs.writeFileSync(bin, `process.stdout.write('{"type":"thread.started","thread_id":"test"}\\n{"type":"step_start","sessionID":"test"}\\n'); setTimeout(() => {}, 30000);\n`);
   try {
     for (const tool of ['claude', 'codex', 'opencode']) {
       const env = tool === 'opencode' ? 'AGENT_WORLD_TEST_BIN' : `AGENT_WORLD_TEST_${tool.toUpperCase()}_BIN`;
@@ -40,8 +40,8 @@ test('callback failures kill every engine before releasing the run', async () =>
 
 test('session persistence failure reports to the page and holds the family lock until exit', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'family-save-failure-'));
-  const bin = path.join(dir, 'hang');
-  fs.writeFileSync(bin, '#!/bin/sh\nexec sleep 30\n', { mode: 0o755 });
+  const bin = path.join(dir, 'hang.mjs');
+  fs.writeFileSync(bin, 'setTimeout(() => {}, 30000);\n');
   process.env.AGENT_WORLD_TEST_CLAUDE_BIN = bin;
   const runs = new Map(), events = [];
   let child;

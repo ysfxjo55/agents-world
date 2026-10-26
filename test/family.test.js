@@ -254,15 +254,15 @@ test('history reads a bounded tail, tolerates partial lines and rotates to three
 });
 
 test('remote Claude chats omit remember permissions and instructions, including Bella', async () => {
-  const { startRun, REMEMBER_BIN, bellaArgs } = await import('../server/chat.js');
+  const { startRun, REMEMBER_CMD, bellaArgs } = await import('../server/chat.js');
   setup();
   for (const agent of [null, 'bella', 'builder']) {
     await new Promise(resolve => startRun({ tool: 'claude', sessionId: null, cwd: dir, text: 'hello', mode: 'readonly', agent, remote: true }, () => {}, resolve));
     const call = JSON.parse(fs.readFileSync(argsFile, 'utf8').trim().split('\n').at(-1));
-    assert.ok(!call.args.some(a => a.includes(REMEMBER_BIN)));
+    assert.ok(!call.args.some(a => a.includes(REMEMBER_CMD)));
     if (agent === 'bella') assert.ok(!call.args.some(a => a.includes('Bash(')));
   }
-  assert.ok(bellaArgs('readonly').some(a => a.includes(REMEMBER_BIN)));
+  assert.ok(bellaArgs('readonly').some(a => a.includes(REMEMBER_CMD)));
 });
 test('family images: saved with the owner message, passed to every turn as files, unknown ids refused', async () => {
   const calls = [], files = { 'a1.png': '/uploads/a1.png' };

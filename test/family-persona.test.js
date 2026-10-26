@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { personaFor, codexPersonaPrompt, stripPersona } from '../server/family-persona.js';
-import { startRun, REMEMBER_BIN } from '../server/chat.js';
+import { startRun, REMEMBER_CMD } from '../server/chat.js';
 
 test('family personas depend on engine and exclude both parents and OpenCode', () => {
   for (const tool of ['claude', 'codex', 'opencode']) for (const agent of ['bella', 'interstellar']) assert.equal(personaFor({ tool, agent }), null);
@@ -35,7 +35,7 @@ test('real runner with fake CLIs injects Claude persona on resume, preserves Bel
       if (tool === 'claude') {
         const i = call.args.indexOf('--append-system-prompt'); assert.ok(i >= 0);
         assert.match(call.args[i + 1], agent === 'bella' ? /Your tools right now/ : /Bella's daughter/);
-        assert.ok(call.args.some(a => a.includes(`Bash(${REMEMBER_BIN}:*)`)));
+        assert.ok(call.args.some(a => a.includes(`Bash(${REMEMBER_CMD}:*)`)));
       } else assert.equal(call.text, codexPersonaPrompt('hello', agent, sessionId));
     }
   } finally {

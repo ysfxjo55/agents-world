@@ -84,6 +84,7 @@ export function withToolPath(env = process.env, platform = process.platform, hom
  * @param {{ platform?: string, env?: Record<string, string | undefined>, exists?: (f: string) => boolean, read?: (f: string) => string }} [io]
  */
 export function resolveBin(cmd, args, { platform = process.platform, env = process.env, exists = fs.existsSync, read = (f) => fs.readFileSync(f, 'utf8') } = {}) {
+  if (/\.[cm]?js$/i.test(cmd)) return { cmd: process.execPath, args: [cmd, ...args] };   // a script file (our bin tools, test fakes): run it with Node, on every system
   if (platform !== 'win32' || /[\\/]/.test(cmd)) return { cmd, args };
   const dirs = String(env.PATH || env.Path || '').split(';').filter(Boolean);
   for (const d of dirs) { const exe = path.win32.join(d, cmd + '.exe'); if (exists(exe)) return { cmd: exe, args }; }
@@ -101,4 +102,15 @@ export function resolveBin(cmd, args, { platform = process.platform, env = proce
 export function inlineScriptHashes(html) {
   return [...html.replace(/\r\n?/g, '\n').matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
     .map(x => `'sha256-${crypto.createHash('sha256').update(x[1]).digest('base64')}'`).join(' ');
+}
+
+// How an agent runs one of our bin/ tools (delegate, remember). They are Node scripts without an extension: Mac and Linux run them
+// through their first line, Windows cannot, so there it is "node C:/.../bin/remember" (forward slashes work in every Windows shell).
+export const toolCommand = (file, platform = process.platform) => (platform === 'win32' ? `node ${file.replace(/\\/g, '/')}` : file);
+
+// A folder in Claude Code's permission rules. On Windows it writes C:\Users\a as /c/Users/a, so that is what the rule must say.
+export function rulePath(dir, platform = process.platform) {
+  if (platform !== 'win32') return dir;
+  const m = dir.match(/^([A-Za-z]):[\\/](.*)$/);
+  return m ? `/${m[1].toLowerCase()}/${m[2].replace(/\\/g, '/').replace(/\/$/, '')}` : dir.replace(/\\/g, '/');
 }

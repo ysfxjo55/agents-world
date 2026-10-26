@@ -6,7 +6,7 @@ import path from 'node:path';
 import { clip } from './status.js';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { withToolPath, resolveBin } from './util.js';
+import { withToolPath, resolveBin, toolCommand, rulePath } from './util.js';
 import { USER } from './config.js';
 import { toolBrief } from './sources/claude.js';
 import { personaFor, codexPersonaPrompt } from './family-persona.js';
@@ -38,11 +38,12 @@ export const CODEX_COMPACT_TOKENS = 120_000;
 
 export const DELEGATE_BIN = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'delegate');
 export const REMEMBER_BIN = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'remember');
+export const DELEGATE_CMD = toolCommand(DELEGATE_BIN), REMEMBER_CMD = toolCommand(REMEMBER_BIN);   // what the agent types (on Windows: node <path>)
 
 // Extra arguments for a chat with Bella: her memory index as context, access to her memory folder, and permission to edit only there.
 // Injected into EVERY Bella message (also inside an old, resumed conversation), so she never works from outdated instructions.
 export const BELLA_TOOLS = `# Your tools right now (this is always current and beats anything older in this conversation)
-- You start, continue and follow agents ONLY with the delegate tool: ${DELEGATE_BIN}  (one command per call, no pipes)
+- You start, continue and follow agents ONLY with the delegate tool: ${DELEGATE_CMD}  (one command per call, no pipes)
     agents | sessions | start <agent> | continue <session-key> | repo | wait <job> | status <job> | stop <job> | trash <key> | restore <id>
 - To continue an OLD agent (an older session remembers its earlier work): run \`delegate sessions\` to find its key, then \`delegate continue <key> "<prompt or @brief file>" --mode build\`. Tell ${USER} which session you are continuing, then do it. Never start a new session when an old one fits.
 - QUICK helpers: for a small one-off job (check their calendar, add one event, answer one small question) start the agent with --temp, for example: delegate start <agent> "<prompt>" --temp --mode readonly --title "Check calendar". Tell them first, then read the answer with delegate wait. When it finishes OK the session moves itself to Trash (recoverable), so their list stays clean. Use --temp ONLY for small throwaway jobs; real work (building, reviewing, designs, research) is started normally so it stays visible and can be continued.
@@ -53,14 +54,14 @@ export const BELLA_TOOLS = `# Your tools right now (this is always current and b
 - Do NOT use ListAgents, SendMessage or the built-in Agent tool: they are not connected to the sessions in the Bella app and will not reach any of their agents.
 - If a command is refused, read the error: it says which chat mode they must pick (top right of the chat page). Tell them that exact option; never say you "cannot reach" an agent before trying the delegate tool.`;
 
-export const REMEMBER_TOOLS = `Save durable facts about ${USER} with ${REMEMBER_BIN} "<fact>" [--said|--observed] [--confirmed] (one command, no pipes).
+export const REMEMBER_TOOLS = `Save durable facts about ${USER} with ${REMEMBER_CMD} "<fact>" [--said|--observed] [--confirmed] (one command, no pipes).
 Notes go to Bella's private inbox. Never save secrets. Ask ${USER} before sensitive personal facts; use --confirmed only after they agree.
 Use --said for what they explicitly said; otherwise use --observed. The tool validates and may refuse a note.`;
 export function bellaArgs(mode, memDir = BELLA_MEMORY, remote = false, familyDir = path.join(memDir, '..', '..', 'family')) {
   const out = ['--add-dir', memDir, '--add-dir', familyDir, '--disallowedTools', 'Agent,Task,ListAgents,SendMessage'];     // agents are started with the delegate tool, so you can watch them in the world
   let mem = ''; try { mem = `# Bella's memory index (from ${memDir}/MEMORY.md)\n\n` + fs.readFileSync(path.join(memDir, 'MEMORY.md'), 'utf8').slice(0, 12000); } catch { /* no memory yet */ }
   out.push('--append-system-prompt', (remote ? 'Remote read-only chat: do not save notes, edit memory or delegate commands.' : BELLA_TOOLS + '\n\n' + REMEMBER_TOOLS) + '\n\n' + mem);
-  if (!remote && mode !== 'full') out.push('--allowedTools', `Edit(/${memDir}/**),Write(/${memDir}/**),Bash(${DELEGATE_BIN}:*),Bash(${REMEMBER_BIN}:*),Edit(/${familyDir}/**),Write(/${familyDir}/**)`);   // the family folder holds the shared profile and the notes inbox she tidies       // "//path" = absolute path in Claude Code's rule syntax
+  if (!remote && mode !== 'full') out.push('--allowedTools', `Edit(/${rulePath(memDir)}/**),Write(/${rulePath(memDir)}/**),Bash(${DELEGATE_CMD}:*),Bash(${REMEMBER_CMD}:*),Edit(/${rulePath(familyDir)}/**),Write(/${rulePath(familyDir)}/**)`);   // the family folder holds the shared profile and the notes inbox she tidies       // "//path" = absolute path in Claude Code's rule syntax
   return out;
 }
 
@@ -135,7 +136,7 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
     if (agent === 'interstellar' && isNew) args.push('--append-system-prompt', interstellarPrompt());   // Claude Code reads CLAUDE.md, not his AGENTS.md
     const persona = personaFor({ tool, agent });
     if (persona) args.push('--append-system-prompt', persona + (remote ? '' : '\n\n' + REMEMBER_TOOLS));
-    if (!remote && agent !== 'bella' && mode !== 'full') args.push('--allowedTools', `Bash(${REMEMBER_BIN}:*)`);
+    if (!remote && agent !== 'bella' && mode !== 'full') args.push('--allowedTools', `Bash(${REMEMBER_CMD}:*)`);
     for (const dir of addDirs) args.push('--add-dir', dir);
     const originals = images.map(originalOf).filter(Boolean);
     if (images.length) { args.push('--add-dir', UPLOADS); text += `\n\n[The user attached ${images.length} file${images.length > 1 ? 's' : ''} (images, PDFs or text): ${images.join(', ')}. Open ${images.length > 1 ? 'them' : 'it'} with the Read tool (for a PDF read it page by page if it is long) before answering.]`;

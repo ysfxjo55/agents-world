@@ -6,9 +6,9 @@ import path from 'node:path';
 
 // A fake "opencode" that never prints anything, to prove a hung start is stopped, retried once, and reported.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-fake-'));
-const hang = path.join(dir, 'opencode-hang'); const good = path.join(dir, 'opencode-good');
-fs.writeFileSync(hang, '#!/bin/sh\necho "$$" >> ' + path.join(dir, 'starts.log') + '\nexec sleep 30\n', { mode: 0o755 });
-fs.writeFileSync(good, `#!/bin/sh\necho '{"type":"text","sessionID":"ses_x","part":{"messageID":"m1","text":"hello"}}'\necho '{"type":"step_finish","sessionID":"ses_x","part":{"reason":"stop","cost":0}}'\n`, { mode: 0o755 });
+const hang = path.join(dir, 'opencode-hang.mjs'); const good = path.join(dir, 'opencode-good.mjs');   // Node fakes, so they also run on Windows
+fs.writeFileSync(hang, `import fs from 'node:fs'; fs.appendFileSync(${JSON.stringify(path.join(dir, 'starts.log'))}, process.pid + '\\n'); setTimeout(() => {}, 30000);\n`);
+fs.writeFileSync(good, `console.log('{"type":"text","sessionID":"ses_x","part":{"messageID":"m1","text":"hello"}}'); console.log('{"type":"step_finish","sessionID":"ses_x","part":{"reason":"stop","cost":0}}');\n`);
 process.env.AGENT_WORLD_OPENCODE_START_MS = '1500';   // generous: starting even a fake shell script can take 400 ms on a busy machine
 const { startRun } = await import('../server/chat.js');
 const run = (bin, sessionId) => new Promise((resolve) => {

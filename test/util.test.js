@@ -83,3 +83,13 @@ test('CSP hash of an inline script is the same for a page with Windows (CRLF) li
   assert.equal(inlineScriptHashes(lf), want);
   assert.equal(inlineScriptHashes(lf.replace(/\n/g, '\r\n')), want);   // what the browser hashes after it turns CRLF into LF
 });
+
+test('Windows: our bin tools run as "node <path>", folder rules use Claude Code\'s /c/... form, script fakes run with Node', async () => {
+  const { toolCommand, rulePath, resolveBin } = await import('../server/util.js');
+  assert.equal(toolCommand('C:\\app\\bin\\remember', 'win32'), 'node C:/app/bin/remember');
+  assert.equal(toolCommand('/app/bin/remember', 'darwin'), '/app/bin/remember');
+  assert.equal(rulePath('C:\\Users\\USER3\\agents-world\\data\\bella\\memory', 'win32'), '/c/Users/USER3/agents-world/data/bella/memory');
+  assert.equal(rulePath('/Users/u/data', 'darwin'), '/Users/u/data');
+  assert.deepEqual(resolveBin('C:\\t\\fake.mjs', ['-p'], { platform: 'win32' }), { cmd: process.execPath, args: ['C:\\t\\fake.mjs', '-p'] });
+  assert.deepEqual(resolveBin('/t/fake.cjs', [], { platform: 'darwin' }), { cmd: process.execPath, args: ['/t/fake.cjs'] });
+});

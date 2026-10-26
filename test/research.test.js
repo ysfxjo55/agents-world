@@ -47,7 +47,7 @@ test('prompts carry the topic, the input files, and the depth minimums', () => {
 
 // a fake `claude`: understands the four phases, counts as web activity, can pretend to hit a usage limit once
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-fakeclaude-'));
-const FAKE = path.join(dir, 'claude');
+const FAKE = path.join(dir, 'claude.cjs');   // .cjs: run with Node on every system, Windows too
 fs.writeFileSync(FAKE, `#!/usr/bin/env node
 const fs = require('fs'), path = require('path');
 let p = ''; process.stdin.on('data', c => p += c); process.stdin.on('end', () => {
@@ -145,8 +145,8 @@ test('the renderer is safe and robust: no HTML from the text, safe links only, n
 });
 
 // a fake claude that is slow, to test Stop and shutdown behaviour of the runner
-const slow = path.join(dir, 'claude-slow');
-fs.writeFileSync(slow, '#!/bin/sh\nexec sleep 60\n', { mode: 0o755 });
+const slow = path.join(dir, 'claude-slow.cjs');
+fs.writeFileSync(slow, 'setTimeout(() => {}, 60000);\n');
 const startSlow = () => {
   const job = { id: R.newJobId(), topic: 'Testing stop and shutdown semantics', depth: 'smoke', maxHours: 1, docs: [], createdAt: Date.now(), status: 'running' };
   R.writeJob(job);

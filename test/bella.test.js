@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { bellaArgs } from '../server/chat.js';
+import { rulePath } from '../server/util.js';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bella-mem-'));
 fs.writeFileSync(path.join(dir, 'MEMORY.md'), '# memory\n- he likes green tea\n');
@@ -15,7 +16,7 @@ test('Bella chats get her memory folder and index', () => {
 });
 test('she may edit only inside her memory folder (absolute-path rule)', () => {
   const rules = bellaArgs('readonly', dir)[bellaArgs('readonly', dir).indexOf('--allowedTools') + 1];
-  assert.ok(rules.includes(`Edit(/${dir}/**)`) && rules.includes(`Write(/${dir}/**)`));
+  assert.ok(rules.includes(`Edit(/${rulePath(dir)}/**)`) && rules.includes(`Write(/${rulePath(dir)}/**)`));
   const list = rules.split(',');
   assert.equal(list.length, 6);                                              // edit + write her memory, delegate, remember, and edit + write the family folder (profile and inbox)
   assert.ok(list[3].startsWith('Bash(') && list[3].includes('/bin/remember:*'), 'remember is allowed');
@@ -37,8 +38,8 @@ test('every message carries her CURRENT tool list, even with no memory file', ()
 });
 
 test('Bella is told the real path of the delegate tool, not a hard-coded one', async () => {
-  const { BELLA_TOOLS, DELEGATE_BIN } = await import('../server/chat.js');
-  assert.ok(BELLA_TOOLS.includes(DELEGATE_BIN));
+  const { BELLA_TOOLS, DELEGATE_CMD } = await import('../server/chat.js');
+  assert.ok(BELLA_TOOLS.includes(DELEGATE_CMD));
 });
 
 test('the delegate ceiling comes from a secret run token, never from a header the caller writes', async () => {

@@ -8,7 +8,7 @@ import { parseRuns } from '../server/runs.js';
 
 const dir = fs.mkdtempSync(path.join(process.cwd(), '.codex-chat-'));
 after(() => fs.rmSync(dir, { recursive: true, force: true }));
-const bin = path.join(dir, 'codex');
+const bin = path.join(dir, 'codex.mjs');   // .mjs: run with Node on every system, Windows too
 const fixture = [
   { type: 'thread.started', thread_id: 'thread-a2' },
   { type: 'turn.started' },
