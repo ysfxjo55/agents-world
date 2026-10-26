@@ -1,4 +1,5 @@
 import { icon, badge } from './icons.js';
+import { watchConnection } from './conn-hint.js';
 const $ = (id) => document.getElementById(id);
 const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -329,8 +330,9 @@ function apply(snap) {
   if (s && !S.runs.has(S.key) && s.lastActivity !== S.lastAct) { S.lastAct = s.lastActivity; loadTranscript(S.key, true); }
 }
 const es = new EventSource('/events');
-es.addEventListener('snapshot', (e) => { $('live').className = 'on'; $('live').lastChild.textContent = 'live'; apply(JSON.parse(e.data)); });
-es.onerror = () => { $('live').className = ''; $('live').lastChild.textContent = 'reconnecting'; };
+const conn = watchConnection({ show: (t) => { $('live').lastChild.textContent = 'not connected'; $('live').title = t; if (!S.snap) alert(t); }, hide: () => { $('live').title = ''; } });   // never "connecting" forever without a reason
+es.addEventListener('snapshot', (e) => { conn.ok(); $('live').className = 'on'; $('live').lastChild.textContent = 'live'; apply(JSON.parse(e.data)); });
+es.onerror = () => { conn.error(); $('live').className = ''; $('live').lastChild.textContent = 'reconnecting'; };
 loadTrash(); setBusy(); autosize();
 
 /* ---------- life board inside the chat page ---------- */

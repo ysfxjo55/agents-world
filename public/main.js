@@ -1,13 +1,21 @@
-import { World } from './world.js';
 import { THEMES, STATUS, TOOLS } from './themes.js';
 import { icon, badge } from './icons.js';
+import { nullWorld, NO_3D } from './null-world.js';
+import { watchConnection } from './conn-hint.js';
 
 const $ = (id) => document.getElementById(id);
 const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const DAY = 14 * 24 * 3600_000;
 
 const state = { snap: null, showAll: ls.get('aw.showAll', '0') === '1', selected: null, theme: ls.get('aw.theme', 'island'), firstSeen: new Map(), panelKey: null, framed: false, links: [] };
-const world = new World($('world'));
+// The 3D world needs WebGL. If it cannot start (old graphics driver, a fresh Windows laptop, a browser setting), the rest of the page still works.
+let world;
+try { const { World } = await import('./world.js'); world = new World($('world')); }
+catch (e) {
+  console.error('3D view off:', e);
+  world = nullWorld(document.createElement('canvas'));
+  const n = document.createElement('div'); n.className = 'note3d'; n.textContent = NO_3D; $('world').append(n);
+}
 world.setTheme(state.theme, false);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
@@ -48,10 +56,12 @@ function apply(snap) {
 const find = (key) => state.snap?.sessions.find(s => s.key === key);
 const findAgent = (key) => (key === 'interstellar' ? state.snap?.interstellar : key === 'bella' ? state.snap?.bella : key === 'lab' ? state.snap?.lab : state.snap?.agents?.find(a => 'agent:' + a.name === key));
 
+const EMPTY = $('empty').textContent;   // "No sessions..."; the same box shows the connection help when needed
 function connect() {
   const es = new EventSource('/events');
-  es.addEventListener('snapshot', (e) => { $('live').className = 'on'; $('live').lastChild.textContent = 'live'; apply(JSON.parse(e.data)); });
-  es.onerror = () => { $('live').className = ''; $('live').lastChild.textContent = 'reconnecting'; };
+  const conn = watchConnection({ show: (t) => { $('live').lastChild.textContent = 'not connected'; $('live').title = t; $('empty').textContent = t; $('empty').hidden = false; }, hide: () => { $('live').title = 'Live connection'; $('empty').textContent = EMPTY; } });
+  es.addEventListener('snapshot', (e) => { conn.ok(); $('live').className = 'on'; $('live').lastChild.textContent = 'live'; apply(JSON.parse(e.data)); });
+  es.onerror = () => { conn.error(); $('live').className = ''; $('live').lastChild.textContent = 'reconnecting'; };
 }
 
 /* ---------- sidebar ---------- */

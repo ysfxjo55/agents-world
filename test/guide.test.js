@@ -188,3 +188,15 @@ test('pathFix gives the PATH command and a full-path command to log in now', () 
   assert.equal(m.fix, `echo 'export PATH="/Users/u/.local/bin:$PATH"' >> ~/.zshrc`);
   assert.equal(m.run, '"/Users/u/.local/bin/claude"');
 });
+
+test('no 3D: the stand-in world does nothing safely; a dead connection shows help', async () => {
+  const { nullWorld } = await import('../public/null-world.js');
+  const { watchConnection, CONN_HELP } = await import('../public/conn-hint.js');
+  const w = /** @type {any} */ (nullWorld({}));
+  w.setTheme('x'); w.sync([]); assert.equal(w.pick(), null); assert.equal(w.screenPos('k'), null); assert.equal(w.buildings.size, 0);
+  let shown = null, timer = null;
+  const c = watchConnection(/** @type {any} */ ({ show: (t) => { shown = t; }, hide: () => { shown = null; }, setTimer: (f) => { timer = f; return 1; }, clearTimer: () => { timer = null; } }));
+  timer(); assert.equal(shown, CONN_HELP);                      // nothing arrived in time
+  c.ok(); assert.equal(shown, null);
+  c.error(); c.error(); assert.equal(shown, null); c.error(); assert.equal(shown, CONN_HELP);   // three errors in a row
+});
