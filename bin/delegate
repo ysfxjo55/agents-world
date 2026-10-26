@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+// Bella's tool for starting and following agent sessions in the Bella app. One command per call, no pipes.
+//   delegate agents                       the agents you can start
+//   delegate sessions                     existing sessions (find an old one to continue)
+//   delegate continue <session-key> <prompt | @file> [--cwd <folder>] [--mode ...]   continue an OLD session (it remembers what it did)
+//   delegate trash <session-key>... [--reason "why"]   move up to 5 sessions to Trash (recoverable; needs an editing chat; protected: your own thread + terminal history)
+//   delegate restore <trash-id>          undo a trash
+//   delegate research "<topic>" [--depth standard|deep|exhaustive] [--hours N]   start an overnight research job in the Research Lab (needs an editing chat)
+//   delegate research-status [<job>]      progress of research jobs
+//   delegate newproject <name> [--brief @file]   create a NEW project folder (a new block in the world) with BRIEF.md + CLAUDE.md in its root; then STOP and ask what to do first (needs an editing chat)
+//   delegate repo [--cwd <folder>]        read-only git state of a project: branch, changes, recent commits
+//   delegate start <agent|opencode> <prompt | @file> [--cwd <folder>] [--mode readonly|edits|build] [--title "<short title>"]
+//   (add --temp to "start" for a QUICK helper: a calendar check, one small question. It moves itself to Trash after it finished.)
+//   delegate wait <job> [--timeout <seconds, max 110>]     prints the agent's final answer once it has finished
+//   delegate status <job>      |      delegate stop <job>
+import fs from 'node:fs';
+import path from 'node:path';
+const BASE = 'http://localhost:4321';
+const BRIEFS = path.join(import.meta.dirname, '..', 'data', 'bella');
+const args = process.argv.slice(2), cmd = args.shift();
+const flag = (n, d) => { const i = args.indexOf(n); if (i < 0) return d; const v = args[i + 1]; args.splice(i, 2); return v; };
+const api = async (method, url, body) => {
+  const r = await fetch(BASE + url, { method, headers: { 'Content-Type': 'application/json', 'X-Bella-Run-Token': process.env.BELLA_RUN_TOKEN || '' }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({})); if (!r.ok) { console.error('ERROR:', j.error || r.status); process.exit(1); } return j;
+};
+(async () => {
+  if (cmd === 'agents') { const s = await api('GET', '/api/snapshot'); console.log(s.agents.map(a => `${a.name}: ${a.description}`).join('\n')); }
+  else if (cmd === 'sessions') { const j = await api('GET', '/api/delegate/sessions'); console.log(j.sessions.map(x => `${x.key} | ${x.tool}${x.agent ? '/' + x.agent : ''} | ${x.status} | ${x.minutesAgo}m ago | ${x.folder} | ${x.title}`).join('\n')); }
+  else if (cmd === 'research') {
+    const depth = flag('--depth', 'deep'), hours = flag('--hours'); const topic = args.shift() || '';
+    const j = await api('POST', '/api/delegate/research', { topic, depth, maxHours: hours ? Number(hours) : undefined });
+    console.log(`Research started. JOB ${j.id}. It runs on its own, even if the page is closed. Results appear in the Research Lab. Check with: delegate research-status ${j.id}`);
+  }
+  else if (cmd === 'research-status') {
+    const id = args.shift(); const j = await api('GET', '/api/research' + (id ? '/' + id : ''));
+    const rows = id ? [j] : j.jobs; console.log(rows.map(x => `${x.id} | ${x.status}${x.alive ? ' (running)' : ''} | ${x.depth} | ${x.stats?.searches || 0} searches, ${x.stats?.pages || 0} pages | ${x.topic.slice(0, 70)}`).join('\n') || 'No research jobs yet.');
+  }
+  else if (cmd === 'trash') {
+    const reason = flag('--reason', ''); const j = await api('POST', '/api/delegate/trash', { keys: args, reason });
+    console.log(j.results.map(x => x.ok ? `MOVED TO TRASH: ${x.title || x.key}  (undo: delegate restore ${x.trashId})` : `NOT MOVED: ${x.key} (${x.error})`).join('\n'));
+  }
+  else if (cmd === 'restore') { const j = await api('POST', '/api/delegate/restore', { id: args.shift() }); console.log(j.ok ? 'Restored.' : 'Could not restore: ' + j.error); }
+  else if (cmd === 'newproject') {
+    const name = args.shift() || '', bf = flag('--brief'); let brief = '';
+    if (bf) { const f = path.resolve(bf.replace(/^@/, '')); if (!f.startsWith(BRIEFS + path.sep)) { console.error('ERROR: brief files must be inside ' + BRIEFS); process.exit(1); } brief = fs.readFileSync(f, 'utf8'); }
+    const j = await api('POST', '/api/delegate/newproject', { name, brief });
+    console.log(`Project folder ready: ${j.path}${j.existed ? ' (it already existed)' : ''}\nA new block appears in the world once an agent session starts there. When the user says what to do, start agents with: delegate start <agent> "<prompt>" --cwd ${j.path} --mode edits --title "<short title>"`);
+  }
+  else if (cmd === 'repo') { const cwd = flag('--cwd'); const j = await api('GET', '/api/delegate/repo' + (cwd ? '?cwd=' + encodeURIComponent(cwd) : '')); console.log(`folder: ${j.folder}\nbranch: ${j.branch}\nbranches: ${j.branches.replace(/\n/g, ', ')}\n\nuncommitted:\n${j.status}\n\nrecent commits:\n${j.recent}\n\nchanges vs main:\n${j.vsMain}`); }
+  else if (cmd === 'continue') {
+    const key = args.shift(); let prompt = args.shift() || '';
+    if (prompt.startsWith('@')) { const f = path.resolve(prompt.slice(1)); if (!f.startsWith(BRIEFS + path.sep)) { console.error('ERROR: brief files must be inside ' + BRIEFS); process.exit(1); } prompt = fs.readFileSync(f, 'utf8'); }
+    const cwd = flag('--cwd'), mode = flag('--mode', 'readonly');
+    const j = await api('POST', '/api/delegate', { resume: key, text: prompt, mode, cwd });
+    console.log(`Continuing the OLD session ${j.key} (same conversation). JOB ${j.job}. Next: delegate wait ${j.job}`);
+  }
+  else if (cmd === 'start') {
+    const target = args.shift(); let prompt = args.shift() || '';
+    if (prompt.startsWith('@')) { const f = path.resolve(prompt.slice(1)); if (!f.startsWith(BRIEFS + path.sep)) { console.error('ERROR: brief files must be inside ' + BRIEFS); process.exit(1); } prompt = fs.readFileSync(f, 'utf8'); }
+    const cwd = flag('--cwd'), mode = flag('--mode', 'readonly'), title = flag('--title', ''), tIdx = args.indexOf('--temp'), temp = tIdx >= 0; if (temp) args.splice(tIdx, 1);
+    const body = { tool: target === 'opencode' ? 'opencode' : 'claude', agent: target === 'opencode' ? null : target, text: prompt, mode, cwd, title, temp };
+    const j = await api('POST', '/api/delegate', body);
+    console.log(`${temp ? 'Started a QUICK helper (it moves to Trash by itself when done). ' : ''}Started. JOB ${j.job}. Watch it at Bella HQ. Next: delegate wait ${j.job}`);
+  } else if (cmd === 'wait') {
+    const id = args.shift(), limit = Math.min(Number(flag('--timeout', 100)) || 100, 110) * 1000, t0 = Date.now();
+    for (;;) {
+      const j = await api('GET', '/api/delegate/' + id);
+      if (j.status !== 'running') { console.log(`${j.status.toUpperCase()}${j.error ? ' (' + j.error + ')' : ''}\n\n${j.text || '(no text answer)'}`); break; }
+      if (Date.now() - t0 > limit) { console.log(`STILL RUNNING after ${Math.round((Date.now() - t0) / 1000)}s. Call delegate wait ${id} again.`); break; }
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  } else if (cmd === 'status') { const j = await api('GET', '/api/delegate/' + args.shift()); console.log(`${j.status} | agent: ${j.agent || j.tool} | session: ${j.key}`); }
+  else if (cmd === 'stop') { await api('POST', '/api/delegate/stop', { job: args.shift() }); console.log('Stop requested.'); }
+  else { console.error('Usage: delegate agents | start | wait | status | stop'); process.exit(2); }
+})();

@@ -1,0 +1,20 @@
+{
+  "name": "",
+  "about": "",
+  "hosts": [],
+  "owner": "",
+  "links": [
+    {
+      "name": "My site",
+      "url": "https://example.com/",
+      "icon": "link"
+    }
+  ],
+  "notify": {
+    "desktop": true,
+    "ntfy": ""
+  },
+  "projectNames": {
+    "/path/to/folder": "Name shown in the app"
+  }
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1b1b1a">
+  <title>Usage · Bella</title>
+  <link rel="stylesheet" href="usage.css">
+</head>
+<body>
+<main>
+  <header class="page-head">
+    <div><p class="eyebrow">BELLA</p><h1>Usage</h1><p class="subtitle">See where your AI usage goes.</p></div>
+    <a href="/chat.html" target="_top" class="back">Back to chat</a>
+  </header>
+  <section class="allowance" aria-label="Account allowance">
+    <div><h2>Account allowance</h2><p>Shared across each account. Separate from the tokens recorded below.</p></div>
+    <div id="allowances"><span>Loading account status…</span></div>
+  </section>
+  <div class="toolbar">
+    <div class="filters"><label>Period<select id="period"><option value="1">Today</option><option value="7" selected>Last 7 days</option><option value="30">Last 30 days</option><option value="0">Since tracking began</option></select></label><label>Engine<select id="engine"><option value="all">All engines</option><option value="claude">Claude Code</option><option value="codex">Codex</option><option value="opencode">OpenCode</option></select></label></div>
+    <button id="refresh" type="button">Refresh</button>
+  </div>
+  <p id="notice" role="status" aria-live="polite">Loading usage…</p>
+  <div id="content" hidden>
+    <section class="metrics" aria-label="Recorded token totals">
+      <article><p>Reported tokens</p><strong id="total">—</strong><small>Input + output, including cached input</small></article>
+      <article><p>Input tokens</p><strong id="input">—</strong><small id="cache">Cache reads not reported</small></article>
+      <article><p>Output tokens</p><strong id="output">—</strong><small>Includes reasoning when reported</small></article>
+      <article><p>Finished runs</p><strong id="runs">—</strong><small id="coverage">Waiting for reported counts</small></article>
+    </section>
+    <section id="engineCards" class="engines" aria-label="Usage by engine"></section>
+    <div class="split">
+      <section class="panel"><h2>Daily usage</h2><p class="hint">Reported tokens · Riyadh time</p><div id="daily"></div></section>
+      <section class="panel"><h2>Where it went</h2><p class="hint">Reported tokens by source</p><div id="sources"></div></section>
+    </div>
+    <section class="panel"><h2>Models</h2><p class="hint">The model reported by the CLI, or your requested model when available.</p><div id="models"></div></section>
+    <section class="panel"><div class="section-head"><h2>Recent runs</h2><span class="hint">Up to 100 finished attempts</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Engine / agent</th><th>Source</th><th>Model</th><th>Input</th><th>Cache read</th><th>Output</th><th>Duration</th><th>Status</th></tr></thead><tbody id="recent"></tbody></table></div>
+      <p id="empty" class="empty" hidden>No runs in this period. New runs will appear here after they finish.</p>
+    </section>
+    <details class="scope"><summary>What is included?</summary><p>Runs started through Bella: chats, delegated agents, Family chat, Today, and Research Lab. Tracking starts with this update. Earlier runs and sessions started separately in other apps or Terminal are not imported.</p><p>Codex reports a conversation counter. We subtract the counter at the start of this run, so earlier conversation usage is not charged to every new reply. Open “Check this count” below a Codex run to see the calculation. If the starting counter cannot be verified, the count stays unknown.</p><p>Unknown counts show a dash. Totals add only reported values and can be incomplete, especially after an interrupted run. Cached input is part of input, not an extra total. Token counts cannot be converted directly into your subscription percentage.</p><p>Only usage metadata is saved locally. Prompts, responses, and API keys are not stored in this usage history. Refreshing this page does not call an AI model.</p></details>
+  </div>
+</main>
+<script type="module" src="usage.js"></script>
+</body>
+</html>

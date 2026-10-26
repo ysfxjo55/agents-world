@@ -1,0 +1,15 @@
+#!/usr/bin/env node
+// Save one private fact to the local family inbox. One command per call, no pipes.
+const args = process.argv.slice(2), text = args.shift();
+if (!text || args.some(a => !['--said', '--observed', '--confirmed'].includes(a)) || (args.includes('--said') && args.includes('--observed'))) {
+  console.error('Usage: remember "<fact>" [--said|--observed] [--confirmed]'); process.exit(2);
+}
+try {
+  const r = await fetch('http://localhost:4321/api/family/remember', {
+    method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, kind: args.includes('--said') ? 'said' : 'observed', confirmed: args.includes('--confirmed') }),
+  });
+  const j = await r.json();
+  if (!r.ok) { console.error('ERROR:', j.error || r.status); process.exitCode = 1; }
+  else console.log(j.message);
+} catch { console.error('ERROR: Could not reach the local family inbox.'); process.exitCode = 1; }

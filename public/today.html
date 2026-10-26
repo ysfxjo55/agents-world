@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1b1b1a">
+<title>Today · Agent World</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23d97757' stroke-width='3'/%3E%3Cpath d='M16 9v7l5 3' fill='none' stroke='%23d97757' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="today.css">
+</head>
+<body>
+<div id="page">
+  <div id="popupBar" hidden>
+    <strong>Today</strong>
+    <span class="grow"></span>
+    <button id="popupSnooze" type="button">Don't show again today</button>
+    <button id="popupClose" type="button" class="primary">Close</button>
+  </div>
+  <header id="head">
+    <h1 id="date">Today</h1>
+    <p id="summary"></p>
+    <button id="showAgain" type="button" hidden>Auto-open is paused today — tap to turn it back on</button>
+    <div class="bar" id="bar"><i id="barFill"></i></div>
+  </header>
+
+  <main id="sections">
+    <section id="habitsSec" hidden>
+      <h2>Habits</h2>
+      <div id="habits"></div>
+    </section>
+
+    <section id="tasksSec" hidden>
+      <h2>Tasks</h2>
+      <div id="tasks"></div>
+    </section>
+
+    <section id="calSec" hidden>
+      <h2>Calendar today</h2>
+      <div id="calAnswer"></div>
+      <div id="calStatus"></div>
+    </section>
+
+    <section id="sessionsSec" hidden>
+      <h2>Sessions</h2>
+      <div id="sessions"></div>
+      <p id="sessTotal"></p>
+    </section>
+  </main>
+
+  <div id="strip">
+    <p id="ask" hidden></p>
+    <div id="answerWrap" hidden>
+      <div id="answer"></div>
+      <div id="status"></div>
+    </div>
+    <div id="stripRow">
+      <textarea id="chatInput" rows="1" placeholder="Tell me what you finished…" autocomplete="off"></textarea>
+      <button id="sendBtn">Send</button>
+    </div>
+    <button id="calBtn">Check my calendar</button>
+  </div>
+</div>
+<script type="module" src="today.js"></script>
+</body>
+</html>

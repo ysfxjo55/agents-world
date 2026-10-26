@@ -1,0 +1,15 @@
+# your own data: sessions list, memory, chats, settings, trash, logs
+data/
+/data
+# optional personal board server
+life/
+node_modules/
+*.tgz
+*.log
+.DS_Store
+# private notes
+HANDOFF.md
+CLAUDE.md
+NOTES-review.md
+PLAN-enhance.md
+REVIEW-second-brain.md

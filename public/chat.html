@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1b1b1a">
+<title>Agent World · Chat</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='8' width='22' height='18' rx='5' fill='%23ff6fae'/%3E%3Crect x='9' y='13' width='14' height='7' rx='2' fill='%232a2f45'/%3E%3Ccircle cx='13' cy='16.5' r='1.7' fill='%238ff7ff'/%3E%3Ccircle cx='19' cy='16.5' r='1.7' fill='%238ff7ff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="chat.css">
+</head>
+<body>
+<div id="app">
+  <div id="scrim"></div>
+  <aside id="side">
+    <div class="side-top">
+      <button id="sideClose" class="ibtn" title="Close sidebar" aria-label="Close sidebar">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>
+      </button>
+      <div class="seg"><a class="on" href="/chat.html">Chat</a><a href="/family.html">Family</a><a href="/">World</a></div>
+    </div>
+    <div class="search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" placeholder="Search" autocomplete="off"></div>
+    <nav class="nav">
+      <button id="bellaBtn"><span class="ic"></span>Bella<span class="chev" style="font-size:11px;color:var(--faint)">manager</span></button>
+      <button id="newBtn"><span class="ic"></span>New chat</button>
+      <button id="agentsBtn"><span class="ic"></span>Agents<span class="chev" id="agentsChev">›</span></button>
+      <div id="agentsList" hidden></div>
+      <button id="todayBtn"><span class="ic"></span>Today</button>
+      <button id="researchBtn"><span class="ic"></span>Research Lab</button>
+      <button id="usageBtn"><span class="ic"></span>Usage</button>
+      <div id="linksList"></div>
+      <button id="selectBtn"><span class="ic"></span>Select chats</button>
+      <button id="trashBtn"><span class="ic"></span>Trash<span class="chev" id="trashN"></span></button>
+    </nav>
+    <div id="hist"></div>
+    <div id="selBar" hidden></div>
+    <div class="side-foot"><label><input type="checkbox" id="showOld"> Show older &amp; archived</label><span id="live"><i></i>connecting</span></div>
+  </aside>
+  <main id="main">
+    <header id="top">
+      <button id="menuBtn" class="ibtn" aria-label="Open sidebar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
+      <div class="ttl"><span id="title">New chat</span><span id="sub"></span></div>
+      <div class="right">
+        <select id="mode" title="What the agent is allowed to do on your computer"></select>
+        <button id="termBtn" class="pill" hidden>Open in Terminal</button>
+      </div>
+    </header>
+    <section id="appview" hidden><header><span id="avTitle"></span><a id="avFull" target="_blank" rel="noopener">↗</a><button id="avClose" aria-label="Close">×</button></header><iframe id="avFrame" title="App"></iframe></section>
+    <section id="scroll"><div id="thread"></div></section>
+    <footer id="dock">
+      <div id="warn" hidden></div>
+      <div class="composer">
+        <div id="attach" hidden></div>
+        <textarea id="input" rows="1" placeholder="Message…" autofocus></textarea>
+        <div class="crow">
+          <div class="cleft"><button id="attachBtn" class="ibtn" type="button" title="Attach images, PDFs, Word or text files (you can also paste or drop them)" aria-label="Attach a file"></button><input type="file" id="file" accept="image/*,.pdf,.doc,.docx,.pptx,.xlsx,.rtf,.txt,.md,.csv,.json,.js,.ts,.py,.html,.css,text/*" multiple hidden><select id="agentSel" title="Talk to one of your agents"></select><span id="toolLbl"></span></div>
+          <button id="send" aria-label="Send"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+        </div>
+      </div>
+      <p class="fine">Runs the real Claude Code / OpenCode / Codex on your computer. Check what it does before trusting it.</p>
+    </footer>
+  </main>
+</div>
+<script type="module" src="chat.js"></script>
+<script type="module" src="daily-today.js"></script>
+</body>
+</html>

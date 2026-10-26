@@ -1,0 +1,29 @@
+{
+  "name": "agent-world",
+  "version": "1.0.0",
+  "description": "Your AI coding agents as a living 3D world",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "snapshot": "node server/index.js --snapshot",
+    "test-notify": "node server/index.js --test-notify",
+    "lint": "eslint .",
+    "typecheck": "tsc -p .",
+    "test": "node --test test/*.test.js",
+    "check": "npm run lint && npm run typecheck && npm test"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.4",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "typescript": "^7.0.2"
+  }
+}

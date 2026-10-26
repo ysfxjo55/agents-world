@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<title>Research Lab · Agent World</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='14' cy='14' r='8' fill='none' stroke='%234fd1e8' stroke-width='3'/%3E%3Cpath d='M20 20l7 7' stroke='%234fd1e8' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="research.css">
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="brand"><span id="logo"></span><div><h1>Research Lab</h1><p>Give it a topic at night. In the morning, a deep, verified report is waiting.</p></div></div>
+    <button id="backBtn" class="ghost" hidden>← All research</button>
+  </header>
+
+  <main id="listView">
+    <section class="card" id="newCard">
+      <h2>New research</h2>
+      <div id="remoteNote" class="note" hidden>You are on the phone link, so you can read reports here but only start research on the computer (localhost:4321).</div>
+      <label class="lbl" for="topic">What should it find out?</label>
+      <textarea id="topic" rows="4" placeholder="Be specific. For example: &quot;What legal requirements apply to launching a paid learning app for adults in the EU in 2026? Cover data protection, licensing, content rules and payments.&quot;"></textarea>
+      <div class="row">
+        <div class="col">
+          <span class="lbl">How deep?</span>
+          <div class="seg" id="depth">
+            <button type="button" data-d="standard"><b>Standard</b><small>1 to 2 hours</small></button>
+            <button type="button" data-d="deep" class="on"><b>Deep</b><small>3 to 5 hours</small></button>
+            <button type="button" data-d="exhaustive"><b>Exhaustive</b><small>6 to 10 hours</small></button>
+          </div>
+        </div>
+        <div class="col narrow">
+          <label class="lbl" for="hours">Stop after at most</label>
+          <select id="hours"><option value="3">3 hours</option><option value="6">6 hours</option><option value="10" selected>10 hours</option><option value="16">16 hours</option><option value="24">24 hours</option></select>
+        </div>
+      </div>
+      <span class="lbl">Files to read first (optional)</span>
+      <div id="drop"><span>Drop PDF or text files here, or</span> <button type="button" id="pick" class="ghost">choose files</button><input type="file" id="files" accept=".pdf,.txt,.md,application/pdf,text/plain" multiple hidden></div>
+      <div id="chips"></div>
+      <div id="power" class="power"></div>
+      <ul class="checklist">
+        <li>Plug in the charger. A night of research drains the battery.</li>
+        <li>Leave the lid OPEN. A closed lid puts a MacBook to sleep and stops the research, even when it is plugged in. You can lock the screen or turn the brightness all the way down.</li>
+        <li>Do not shut down or log out. After that, close this page: it keeps working without it.</li>
+      </ul>
+      <div class="actions"><button id="start" class="primary">Start researching</button><span id="msg"></span></div>
+    </section>
+    <section id="jobs"></section>
+  </main>
+
+  <main id="reportView" hidden>
+    <div id="reportBar"></div>
+    <div id="reportWrap"><nav id="toc" aria-label="Contents"></nav><article id="report" class="report"></article></div>
+  </main>
+</div>
+<script type="module" src="research.js"></script>
+</body>
+</html>

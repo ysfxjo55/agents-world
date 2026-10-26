@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1b1a">
+<title>Agent World · Family chat</title>
+<link rel="stylesheet" href="family.css">
+</head>
+<body>
+<header><a href="/">World</a><a href="/chat.html">Chats</a><h1>Family chat</h1><label>Access <select id="mode"><option value="readonly">Read only</option><option value="edits">Allow edits</option><option value="build">Build &amp; test</option><option value="full">Full access</option></select></label></header>
+<main id="scroll"><div id="thread" aria-live="polite"></div></main>
+<footer>
+  <div class="statuses" aria-live="polite"><span id="bellaStatus" class="bella"></span><span id="interstellarStatus" class="interstellar"></span></div>
+  <div id="notice" role="status"></div>
+  <form id="composer">
+    <label class="sr" for="input">Message the family</label>
+    <div id="attach" hidden></div>
+    <textarea id="input" rows="2" placeholder="Talk with Bella and Interstellar. Type @ to choose." maxlength="20000"></textarea>
+    <div id="mentions" hidden><button type="button" data-mention="Bella">@Bella</button><button type="button" data-mention="Interstellar">@Interstellar</button></div>
+    <div class="actions"><button id="attachBtn" type="button" title="Attach images (you can also paste them)" aria-label="Attach images"></button><input type="file" id="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden><button id="send" type="submit">Send</button><button id="other" type="button">Ask the other</button><button id="discuss" type="button">Discuss</button><button id="stop" type="button" disabled>Stop</button><span id="usage">One partner answers by default.</span></div>
+  </form>
+</footer>
+<script type="module" src="family.js"></script>
+</body>
+</html>
