@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // (or by itself with "updates": {"auto": true}). A git clone is updated with git pull; a ZIP install by downloading the
 // new files. Your data (data/, .env) and your ~/.claude files are never touched.
 
-export const REPO = 'ysfxjo55/agent-world';   // owner/name on GitHub: change this one line when the repo is renamed
+export const REPO = 'ysfxjo55/agents-world';   // owner/name on GitHub: change this one line when the repo is renamed
 export const BRANCH = 'main';
 export const RESTART_CODE = 75;                // server/start.js starts the server again when it exits with this code
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');

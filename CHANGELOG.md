@@ -2,6 +2,9 @@
 
 Each version starts with "## <version>". The app shows these lines in its "A new version is ready" banner.
 
+## 0.2.4
+- Agents World now lives at github.com/ysfxjo55/agents-world (public).
+
 ## 0.2.3
 - Faster update checks (every hour and when you open the page) and a "Check for updates" button in the sidebar.
 - Research Lab: Stop now really stops everything on Windows.
