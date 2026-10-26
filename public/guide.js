@@ -120,7 +120,8 @@ function engineList() {
     box.append(d);
   }
   const eng = cfg?.engines || {}, name = (x) => ENGINES[x]?.name;
-  if (eng.bella || eng.interstellar) box.append(el('p', 'gd-soft', `Bella will use ${name(eng.bella)}. Interstellar will use ${name(eng.interstellar)}.${eng.bella === eng.interstellar ? ' With one program, they share it.' : ''}`));
+  const who = [eng.bella && `Bella (your manager, on ${name(eng.bella)})`, eng.interstellar && `Interstellar (your partner, on ${name(eng.interstellar)})`].filter(Boolean);
+  if (who.length) box.append(el('p', 'gd-soft', `You get ${who.join(' and ')}.${who.length < 2 ? ` Add ${eng.bella ? 'Codex to also get Interstellar' : 'Claude Code to also get Bella'}.` : ''}`));
   const row = el('div', 'gd-row'), again = el('button', 'gd-btn', 'Check again'); again.type = 'button';
   const go = el('button', 'gd-btn primary', 'Continue'); go.type = 'button'; go.disabled = !engineWorks(found); go.onclick = () => feed({ type: 'engine-ok' });
   again.onclick = async () => { again.disabled = true; const r = await fetch('/api/engines').then(x => x.json()).catch(() => null); if (r) cfg.engines = r; shown = null; render(); };

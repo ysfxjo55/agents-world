@@ -78,7 +78,7 @@ export function interstellarPrompt(dir = INTERSTELLAR_DIR) {
 // Codex has no tool rules like Claude Code, so she cannot start other agents here; the sandbox still applies.
 export function bellaCodexPrompt(text, sessionId, remote = false, { agentsDir = AGENTS_DIR, memDir = BELLA_MEMORY } = {}) {
   if (sessionId) return text;
-  let who; try { who = fs.readFileSync(path.join(agentsDir, 'bella.md'), 'utf8').replace(/^---[\s\S]*?---\s*/, ''); } catch { who = 'You are Bella, the user\'s personal assistant.'; }
+  let who; try { who = fs.readFileSync(path.join(agentsDir, 'bella.md'), 'utf8').replace(/\r\n?/g, '\n').replace(/^---[\s\S]*?---\s*/, ''); } catch { who = 'You are Bella, the user\'s personal assistant.'; }
   let mem = ''; try { mem = fs.readFileSync(path.join(memDir, 'MEMORY.md'), 'utf8').slice(0, 12000); } catch { /* no memory yet */ }
   const note = remote ? 'This is a read-only chat: do not change files.' : `You run on Codex here, so you cannot start other agents. Say so if the user asks for that. Your memory folder is ${memDir}; you can save notes there only when the chat allows editing.`;
   return `[Bella instructions]\n${who}\n${note}\n${mem ? '\n# Your memory index (MEMORY.md)\n' + mem : ''}\n[/Bella instructions]\n\n${text}`;

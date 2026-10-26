@@ -112,13 +112,15 @@ test('detectEngines finds programs on PATH and login files, without reading toke
   assert.equal(engineSummary(none).bella, null);
 });
 
-test('with one engine both agents use it; a setting can move an agent; an uninstalled setting is ignored', () => {
+test('Claude only gives Bella, Codex only gives Interstellar; a setting can move an agent; an uninstalled setting is ignored', () => {
   const both = { claude: { installed: true }, codex: { installed: true } }, onlyClaude = { claude: { installed: true } }, onlyCodex = { codex: { installed: true } };
   assert.deepEqual([engineFor('bella', both), engineFor('interstellar', both)], ['claude', 'codex']);
-  assert.deepEqual([engineFor('bella', onlyClaude), engineFor('interstellar', onlyClaude)], ['claude', 'claude']);
-  assert.deepEqual([engineFor('bella', onlyCodex), engineFor('interstellar', onlyCodex)], ['codex', 'codex']);
+  assert.deepEqual([engineFor('bella', onlyClaude), engineFor('interstellar', onlyClaude)], ['claude', null]);
+  assert.deepEqual([engineFor('bella', onlyCodex), engineFor('interstellar', onlyCodex)], [null, 'codex']);
+  assert.equal(engineFor('interstellar', onlyClaude, { interstellar: { engine: 'claude' } }), 'claude');   // old configs that chose Claude still work
   assert.equal(engineFor('interstellar', both, { interstellar: { engine: 'claude' } }), 'claude');
   assert.equal(engineFor('bella', onlyClaude, { bella: { engine: 'codex' } }), 'claude');
+  assert.equal(engineFor('interstellar', onlyClaude, { interstellar: { engine: 'codex' } }), null);
   assert.equal(engineFor('bella', { opencode: { installed: true } }), null);
 });
 
@@ -135,22 +137,27 @@ test('start fresh: parseSince and saveSettings keep the other settings', () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('one engine: Bella and Interstellar both run on it, and the chat rules follow', async () => {
+test('one engine: only its own manager is shown and may chat', async () => {
   const { chatAccessError, bellaCodexPrompt, interstellarPrompt } = await import('../server/chat.js');
   const { setEngines, currentEngines } = await import('../server/engines.js');
   const before = currentEngines();
   try {
+    const { agentShown } = await import('../server/engines.js');
     setEngines(engineSummary({ claude: { installed: true, loggedIn: true } }));
-    assert.equal(chatAccessError({ tool: 'claude', mode: 'readonly', agent: 'interstellar', remote: false }), null);
-    assert.match(chatAccessError({ tool: 'codex', mode: 'readonly', agent: 'interstellar', remote: false }).error, /Claude Code/);
+    assert.equal(chatAccessError({ tool: 'claude', mode: 'readonly', agent: 'bella', remote: false }), null);
+    assert.match(chatAccessError({ tool: 'claude', mode: 'readonly', agent: 'interstellar', remote: false }).error, /Install/);
+    assert.deepEqual([agentShown('bella'), agentShown('interstellar')], [true, false]);
     setEngines(engineSummary({ codex: { installed: true, loggedIn: true } }));
-    assert.equal(chatAccessError({ tool: 'codex', mode: 'readonly', agent: 'bella', remote: false }), null);
+    assert.equal(chatAccessError({ tool: 'codex', mode: 'readonly', agent: 'interstellar', remote: false }), null);
+    assert.deepEqual([agentShown('bella'), agentShown('interstellar')], [false, true]);
+    setEngines(engineSummary({ claude: { installed: true }, codex: { installed: true } }));
+    assert.deepEqual([agentShown('bella'), agentShown('interstellar')], [true, true]);
+    setEngines(engineSummary({ opencode: { installed: true } }));
+    assert.deepEqual([agentShown('bella'), agentShown('interstellar')], [true, true]);   // nothing usable yet: nothing is hidden
     assert.match(chatAccessError({ tool: 'codex', mode: 'readonly', agent: 'architect', remote: false }).error, /Claude Code/);
-    setEngines(engineSummary({}));
-    assert.match(chatAccessError({ tool: 'claude', mode: 'readonly', agent: 'bella', remote: false }).error, /Install/);
   } finally { setEngines(before); }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-p-'));
-  fs.writeFileSync(path.join(dir, 'bella.md'), '---\nname: bella\n---\nYou are Bella.');
+  fs.writeFileSync(path.join(dir, 'bella.md'), '---\r\nname: bella\r\n---\r\nYou are Bella.');   // Windows line ends
   const first = bellaCodexPrompt('hi', null, false, { agentsDir: dir, memDir: dir });
   assert.match(first, /^\[Bella instructions\]\nYou are Bella\./);
   assert.match(first, /cannot start other agents/);

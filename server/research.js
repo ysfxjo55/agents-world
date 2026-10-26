@@ -138,7 +138,7 @@ function readPower() {
 // The researcher's definition is read from the repo (agents/deep-researcher.md) and handed to the CLI directly (--agents): the locked-down
 // --restricted mode ignores the personal ~/.claude folder, and this way the run never depends on it.
 export function agentJson(file = path.join(ROOT, 'agents', 'deep-researcher.md')) {
-  const s = fs.readFileSync(file, 'utf8'), m = s.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  const s = fs.readFileSync(file, 'utf8').replace(/\r\n?/g, '\n'), m = s.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!m) throw new Error('agents/deep-researcher.md has no front matter');
   const description = (m[1].match(/^description:\s*(.+)$/m) || [])[1]?.trim(), prompt = m[2].trim();
   if (!description || prompt.length < 200) throw new Error('agents/deep-researcher.md is missing its description or prompt');

@@ -66,7 +66,7 @@ const family = new FamilyChat({ runs });
 
 /* ---------- live snapshot ---------- */
 const notifier = makeNotifier(config.notify);
-const familyKeys = () => { try { const f = family.sessions(); return [f.bella && `claude:${f.bella}`, f.interstellar && `codex:${f.interstellar}`]; } catch { return []; } };
+const familyKeys = () => { try { const f = family.sessions(); return [f.bella && `${currentEngines().bella || 'claude'}:${f.bella}`, f.interstellar && `${currentEngines().interstellar || 'codex'}:${f.interstellar}`]; } catch { return []; } };
 const checkDone = notifier ? createDoneWatcher({
   notify: notifier,
   nameOf: (s) => snapshot.projects.find(p => p.path === s.projectPath)?.name,

@@ -20,9 +20,9 @@ Everything runs on your own computer. Nothing is sent anywhere except what the a
 
 | You have | Install | Log in | What you get |
 |---|---|---|---|
-| Claude Pro or Max | Claude Code: `curl -fsSL https://claude.ai/install.sh \| bash` (Windows PowerShell: `irm https://claude.ai/install.ps1 \| iex`) | run `claude` and log in in the browser | Everything. Bella and Interstellar both run on Claude Code. |
-| ChatGPT Plus or Pro | Codex: `npm install -g @openai/codex` | run `codex` and choose "Sign in with ChatGPT" | Everything except the Claude-only extras: Bella and Interstellar both run on Codex. On Codex, Bella cannot start other agents, and the Agent Guild and Research Lab need Claude Code. |
-| Both | both of the above | both | Each manager gets its own brain: Bella on Claude Code, Interstellar on Codex. |
+| Claude Pro or Max | Claude Code: `curl -fsSL https://claude.ai/install.sh \| bash` (Windows PowerShell: `irm https://claude.ai/install.ps1 \| iex`) | run `claude` and log in in the browser | You get **Bella**, your manager, plus the Agent Guild and the Research Lab. |
+| ChatGPT Plus or Pro | Codex: `npm install -g @openai/codex` | run `codex` and choose "Sign in with ChatGPT" | You get **Interstellar**, your partner. The Agent Guild and the Research Lab need Claude Code. |
+| Both | both of the above | both | You get both, and the Family chat where they talk together. |
 
 The free Claude plan does not include Claude Code. OpenCode works for plain chats too, but Bella and Interstellar need Claude Code or Codex. The first-steps guide shows what it found on your computer and the commands for anything missing. To choose yourself, set `agents` in `data/config.json` (see Settings).
 
@@ -72,7 +72,7 @@ Copy `config.example.json` to `data/config.json` and edit it. Every setting is o
 - `links`: your own shortcuts in the sidebar (`https://` only).
 - `projectNames`: a nicer name for a project folder.
 - `showSince`: "start fresh". The world and the lists only show sessions active since this moment (a date like `"2026-10-26"` or a number in ms; `0` shows everything). Older sessions are only hidden, never deleted: tick "Show older & archived" to see them. The guide's first step sets it for you. For a quick test you can also start with `AGENTS_WORLD_SHOW_SINCE=now npm start`.
-- `agents`: which program Bella and Interstellar run on, for example `{"interstellar": {"engine": "claude"}}`. Values: `"claude"` or `"codex"`. If that program is not installed, the other one is used. Default: Bella on Claude Code, Interstellar on Codex; with only one program installed, both use it.
+- `agents`: which program Bella and Interstellar run on, for example `{"interstellar": {"engine": "claude"}}` to get Interstellar on Claude Code. Values: `"claude"` or `"codex"`. Default: Bella on Claude Code, Interstellar on Codex; an agent whose program is not installed is hidden.
 - `today`: `true` turns on the Today page (a daily plan page that opens once a day). Off by default.
 - `hosts` and `owner`: only for private remote access with Tailscale (see below). Leave them empty otherwise.
 

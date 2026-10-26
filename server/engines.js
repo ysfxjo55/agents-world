@@ -40,20 +40,28 @@ export function detectEngines({ env = process.env, platform = process.platform, 
 
 /**
  * The engine for Bella or Interstellar: your setting ("agents": {"bella": {"engine": "codex"}}) if that engine is installed,
- * else the agent's usual one, else the other one. With only one engine, both agents use it. null = no engine at all.
+ * else the agent's own one (Bella: Claude Code, Interstellar: Codex). null = not available: with only Claude you get Bella,
+ * with only Codex you get Interstellar, with both you get both.
  * @param {'bella' | 'interstellar'} agent
  * @param {Record<string, { installed: boolean }>} found
  * @param {Record<string, { engine?: string }>} [settings]
  */
 export function engineFor(agent, found, settings = {}) {
   const ok = (e) => (e === 'claude' || e === 'codex') && !!found[e]?.installed;
-  const wanted = settings[agent]?.engine, usual = DEFAULTS[agent], other = usual === 'claude' ? 'codex' : 'claude';
-  return ok(wanted) ? wanted : ok(usual) ? usual : ok(other) ? other : null;
+  const wanted = settings[agent]?.engine, usual = DEFAULTS[agent];
+  return ok(wanted) ? wanted : ok(usual) ? usual : null;
 }
 
 /** Everything the pages and the server need, in one object. */
 export function engineSummary(found, settings = {}) {
   return { found, bella: engineFor('bella', found, settings), interstellar: engineFor('interstellar', found, settings), any: Object.values(found).some(e => e.installed) };
+}
+
+/** Is this manager shown at all? Yes when it has an engine. With neither Claude Code nor Codex (nothing set up yet, or only OpenCode) both stay, as before. */
+export function agentShown(agent, eng = current) {
+  const f = /** @type {Record<string, { installed?: boolean }>} */ (eng.found || {});
+  if (!f.claude?.installed && !f.codex?.installed) return true;
+  return !!eng[agent];
 }
 
 // What the running app uses. Until the server looks (at startup), each agent keeps its usual engine.

@@ -10,6 +10,7 @@ import { listAgents } from './agents.js';
 import { liveRuns, applyRuns } from './runs.js';
 import { config } from './config.js';
 import { INTERSTELLAR_DIR } from './chat.js';
+import { agentShown, currentEngines } from './engines.js';
 import { loadDelegations, loadBella, bellaMainKey } from './bella.js';
 import { loadCreated } from './newproject.js';
 import { researchSessionMap, listJobs, runnerAlive, RESEARCH_DIR } from './research.js';
@@ -48,7 +49,7 @@ export function buildSnapshot(now = Date.now(), registry = new Map()) {
   // available to the runner, but identify them separately from personal chats.
   let familySessions = {};
   try { familySessions = JSON.parse(fs.readFileSync(path.join(process.env.AGENT_WORLD_FAMILY_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'family'), 'sessions.json'), 'utf8')); } catch (e) { if (e.code !== 'ENOENT') console.error('Family sessions unreadable:', e.message); }
-  const familyKeys = new Set([familySessions.bella && `claude:${familySessions.bella}`, familySessions.interstellar && `codex:${familySessions.interstellar}`].filter(Boolean));
+  const familyKeys = new Set([familySessions.bella && `${currentEngines().bella || 'claude'}:${familySessions.bella}`, familySessions.interstellar && `${currentEngines().interstellar || 'codex'}:${familySessions.interstellar}`].filter(Boolean));
   for (const s of sessions) s.familyChat = familyKeys.has(s.key);
   const runs = liveRuns(registry);
   applyRuns(sessions, runs, now);                       // a running agent is working, even while its model thinks silently
@@ -66,7 +67,7 @@ export function buildSnapshot(now = Date.now(), registry = new Map()) {
   const created = new Set(loadCreated());
   for (const s of sessions) if (created.has(s.cwd)) s.createdProject = true;    // work in a project folder Bella opened for a task: it belongs to that project's block
   const bs = loadBella(), bellaKeys = [bellaMainKey(bs), ...bs.history].filter(Boolean);
-  const bella = everyone.find(a => a.name === 'bella') || null;
+  const bella = agentShown('bella') ? everyone.find(a => a.name === 'bella') || null : null;   // Claude only: Bella; Codex only: Interstellar
   if (bella && sessions.some(s => s.delegatedBy === 'bella' && s.status === 'working')) bella.status = 'working';   // she is busy while her agents are      // the manager has her own block, not a pedestal in the Guild
   const lab = everyone.find(a => a.name === 'deep-researcher') || null;      // the Research Lab has its own block, like Bella HQ
   if (lab) {
@@ -74,7 +75,7 @@ export function buildSnapshot(now = Date.now(), registry = new Map()) {
     lab.jobs = { running: running.length, total: jobs.length, done: jobs.filter(j => j.status === 'done').length };
     if (running.length) lab.status = 'working';
   }
-  const interstellar = interstellarSnapshot(sessions, runs);
+  const interstellar = agentShown('interstellar') ? interstellarSnapshot(sessions, runs) : null;
   const agents = guildAgents(everyone);
   // research job folders are not projects you can pick
   const visibleProjects = [...projects.values()].filter(p => !p.path.startsWith(RESEARCH_DIR + '/')).sort((a, b) => b.lastActivity - a.lastActivity);

@@ -20,7 +20,7 @@ const PALETTE = ['#e86bb0', '#6bd3e8', '#e8c46b', '#9b8cf5', '#6be8a4', '#f58f6b
 const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
 function parseDef(file) {
-  let txt; try { txt = fs.readFileSync(path.join(DIR, file), 'utf8'); } catch { return null; }
+  let txt; try { txt = fs.readFileSync(path.join(DIR, file), 'utf8').replace(/\r\n?/g, '\n'); } catch { return null; }   // Windows line ends (CRLF) too
   const m = txt.match(/^---\n([\s\S]*?)\n---/); if (!m) return null;
   const get = (k) => (m[1].match(new RegExp(`^${k}:\\s*(.+)$`, 'm')) || [])[1]?.trim().replace(/^["']|["']$/g, '');
   const name = get('name'); if (!name || !/^[\w-]+$/.test(name)) return null;

@@ -134,7 +134,7 @@ function renderTop() {
 }
 function fillSelects() {
   const m = $('mode'); m.replaceChildren(); for (const [k, v] of Object.entries(MODES)) { const locked = S.remote && k !== 'readonly'; const o = new Option(locked ? `${v} (open localhost:4321)` : v, k); o.title = locked ? 'Locked on the Tailscale address. On the computer, open http://localhost:4321' : MODE_HELP[k]; o.disabled = locked; m.append(o); } if (S.remote) S.mode = 'readonly'; m.value = S.mode; m.className = S.mode === 'full' || S.mode === 'build' ? 'full' : '';
-  const a = $('agentSel'); a.replaceChildren(new Option('No agent', ''), new Option('Interstellar', 'interstellar')); if (S.snap?.bella) a.append(new Option('Bella (manager)', 'bella')); for (const x of S.snap?.agents || []) a.append(new Option(x.name, x.name)); a.value = S.agent;
+  const a = $('agentSel'); a.replaceChildren(new Option('No agent', '')); if (S.snap?.interstellar) a.append(new Option('Interstellar', 'interstellar')); if (S.snap?.bella) a.append(new Option('Bella (manager)', 'bella')); for (const x of S.snap?.agents || []) a.append(new Option(x.name, x.name)); a.value = S.agent;
 }
 $('mode').onchange = (e) => {
   const codex = (find(S.key)?.tool || S.tool) === 'codex';
@@ -324,6 +324,7 @@ function apply(snap) {
   const names = new Map(snap.projects.map(p => [p.path, p.name]));
   for (const s of snap.sessions) s.projectName = names.get(s.projectPath);
   const first = !S.snap; S.snap = snap;
+  $('bellaBtn').hidden = !snap.bella; document.querySelector('.seg a[href="/family.html"]').hidden = !(snap.bella && snap.interstellar);   // Claude only: Bella; Codex only: Interstellar; the family chat needs both
   if (first) { fillSelects(); const k = decodeURIComponent(location.hash.slice(1)), ag = P.get('agent'); if (ag === 'bella' && snap.bella) { openBella(); } else if (ag && snap.agents?.some(a => a.name === ag)) { newChat(ag); } else if (k && find(k)) openSession(k); else renderThread(); }
   renderSide(); renderTop(); guide({ type: 'status', sessions: snap.sessions });
   const s = S.key && find(S.key);       // a terminal elsewhere moved this session on: show it live

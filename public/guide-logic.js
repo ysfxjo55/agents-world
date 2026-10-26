@@ -13,7 +13,7 @@ export const STEPS = [
     accepts: (ev) => ev.type === 'next' },
   { id: 'connect', page: 'any', target: null, engines: true,
     title: 'Connect your AI',
-    text: 'Agents World has no AI account of its own. It runs Claude Code or Codex on this computer, logged in with your own subscription. One is enough. It never asks for your password or keys.',
+    text: 'Agents World has no AI account of its own. It runs Claude Code or Codex on this computer, logged in with your own subscription. One is enough: Claude Code gives you Bella, Codex gives you Interstellar, both give you both. It never asks for your password or keys.',
     accepts: (ev) => ev.type === 'engine-ok' },
   { id: 'name', page: 'any', target: null, input: 'name',
     title: 'What should the agents call you?',

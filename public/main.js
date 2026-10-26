@@ -86,7 +86,7 @@ function renderSidebar(list) {
     const em = el('span', 'em'); em.innerHTML = badge('interstellar', '#ffb347'); b.append(em, el('span', 't', 'Interstellar'), el('span', 'a', a.status === 'working' ? 'working' : 'ready'));
     b.onclick = () => { select('interstellar', true); closeSide(); }; g.append(b); box.append(g);
   }
-  {
+  if (state.snap?.bella && state.snap?.interstellar) {   // the family chat needs both managers
     const g = el('div', 'grp'), b = el('button', 'row');
     const em = el('span', 'em'); em.innerHTML = badge('chat', '#ffb347');
     b.append(em, el('span', 't', 'Family chat'), el('span', 'a', 'open'));
@@ -158,7 +158,8 @@ function buildAgentCard(a) {
   const isI = a.name === 'interstellar', isB = a.name === 'bella', isL = a.name === 'deep-researcher'; const h = el('h2', '', isI ? 'Interstellar' : isB ? 'Bella' : isL ? 'Deep Researcher' : a.name); top.append(av, h);
   const meta = el('div', 'meta'); meta.id = 'cardMeta';
   const stat = el('span', 'st'); stat.append(el('i', `dot ${a.status}`), document.createTextNode(a.status === 'working' ? 'Working now' : a.status === 'needs' ? 'Needs you' : 'Ready'));
-  meta.append(el('span', isI ? 'badge codex' : 'badge claude', isI ? 'Partner · Codex' : isB ? 'Manager' : isL ? 'Researcher' : 'Agent'), stat, document.createTextNode(a.lastUsed ? '· used ' + ago(a.lastUsed) : '· never used yet'));
+  const eng = isI ? state.eng?.interstellar || 'codex' : isB ? state.eng?.bella || 'claude' : 'claude', engName = eng === 'codex' ? 'Codex' : 'Claude Code';   // the program it really runs on
+  meta.append(el('span', 'badge ' + eng, isI ? `Partner · ${engName}` : isB ? `Manager · ${engName}` : isL ? 'Researcher' : 'Agent'), stat, document.createTextNode(a.lastUsed ? '· used ' + ago(a.lastUsed) : '· never used yet'));
   const desc = el('div', 'desc', a.description);
   const launch = el('div', 'launch'), sel = document.createElement('select');
   sel.title = 'Folder to start in';
@@ -306,5 +307,5 @@ setInterval(() => { if (state.snap) { renderSidebar(visible(state.snap)); refres
 $('chatBtn').innerHTML = icon('chat', 16) + ' Chat'; setThemeBtn(); connect();
 fetch('/api/config').then(r => r.json()).then(c => {
   if (c.remote) { const a = document.createElement('a'); a.id = 'remotePill'; a.href = 'http://localhost:4321/'; a.target = '_top'; a.textContent = 'Read-only link. On the computer, open localhost:4321 to edit'; $('toolbar').prepend(a); }
-  state.links = c.links || []; state.today = !!c.today; if (state.snap) renderSidebar(visible(state.snap)); }).catch(() => {});
+  state.links = c.links || []; state.today = !!c.today; state.eng = c.engines; if (state.snap) renderSidebar(visible(state.snap)); }).catch(() => {});
 window.__aw = { world, state };
