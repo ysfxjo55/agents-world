@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { STEPS, ENGINES, fresh, load, save, onEvent, current, close, restart, isActive, onPage, label, engineWorks } from '../public/guide-logic.js';
+import { pathFix, STEPS, ENGINES, fresh, load, save, onEvent, current, close, restart, isActive, onPage, label, engineWorks } from '../public/guide-logic.js';
 import { saveName, saveSettings, parseSince } from '../server/config.js';
 import { detectEngines, engineFor, engineSummary } from '../server/engines.js';
 
@@ -106,7 +106,7 @@ test('detectEngines finds programs on PATH and login files, without reading toke
   const home = '/h', files = new Set(['/h/.local/bin/claude', '/usr/local/bin/codex', '/h/.codex/auth.json']);
   const read = (f) => { assert.equal(f, '/h/.claude.json'); return JSON.stringify({ oauthAccount: { emailAddress: 'x' } }); };
   const found = detectEngines({ env: { PATH: '' }, platform: 'darwin', home, exists: (f) => files.has(f), read });
-  assert.deepEqual(found, { claude: { installed: true, loggedIn: true }, codex: { installed: true, loggedIn: true }, opencode: { installed: false, loggedIn: false } });
+  assert.deepEqual(found, { claude: { installed: true, dir: '/h/.local/bin', onPath: true, loggedIn: true }, codex: { installed: true, dir: '/usr/local/bin', onPath: true, loggedIn: true }, opencode: { installed: false, loggedIn: false } });
   const none = detectEngines({ env: { PATH: '' }, platform: 'darwin', home, exists: () => false, read: () => '{}' });
   assert.equal(engineSummary(none).any, false);
   assert.equal(engineSummary(none).bella, null);
@@ -159,4 +159,32 @@ test('one engine: Bella and Interstellar both run on it, and the chat rules foll
   fs.writeFileSync(path.join(dir, 'AGENTS.md'), 'I am Interstellar.');
   assert.equal(interstellarPrompt(dir), 'I am Interstellar.');
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('Windows: Claude Code installed to .local\\bin but not on PATH is found, flagged, and found on PATH after the fix', async () => {
+  const { refreshUserPath, toolPath } = await import('../server/util.js');
+  const home = 'C:\\Users\\USER3', exe = 'C:\\Users\\USER3\\.local\\bin\\claude.exe', npm = 'C:\\Users\\USER3\\AppData\\Roaming\\npm';
+  const env = { Path: 'C:\\Windows', APPDATA: 'C:\\Users\\USER3\\AppData\\Roaming', USERPROFILE: home };
+  const files = new Set([exe, npm + '\\codex.cmd']);
+  const before = detectEngines({ env, platform: 'win32', home, userPath: '', exists: (f) => files.has(f), read: () => '{}' });
+  assert.deepEqual(before.claude, { installed: true, dir: 'C:\\Users\\USER3\\.local\\bin', onPath: false, loggedIn: false });
+  assert.equal(before.codex.dir, npm);                                         // the npm global folder is a known folder too
+  const after = detectEngines({ env, platform: 'win32', home, userPath: 'C:\\Users\\USER3\\.local\\bin', exists: (f) => files.has(f), read: () => '{}' });
+  assert.equal(after.claude.onPath, true);
+  // "Check again" re-reads the saved user PATH from the registry, expanding %USERPROFILE%
+  const reg = '\r\nHKEY_CURRENT_USER\\Environment\r\n    Path    REG_EXPAND_SZ    %USERPROFILE%\\.local\\bin;C:\\Tools\r\n';
+  assert.equal(refreshUserPath({ platform: 'win32', env, run: () => reg }), 'C:\\Users\\USER3\\.local\\bin;C:\\Tools');
+  assert.match(toolPath(env, 'win32', home), /^C:\\Users\\USER3\\\.local\\bin;C:\\Users\\USER3\\AppData\\Roaming\\npm;C:\\Windows;C:\\Users\\USER3\\\.local\\bin;C:\\Tools$/);
+  assert.equal(refreshUserPath({ platform: 'win32', env, run: () => { throw new Error('no reg'); } }), '');
+  assert.equal(refreshUserPath({ platform: 'darwin', env, run: () => reg }), '');
+});
+
+test('pathFix gives the PATH command and a full-path command to log in now', () => {
+  const w = pathFix('claude', 'C:\\Users\\USER3\\.local\\bin', 'win');
+  assert.equal(w.fix, '[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","User") + ";$env:USERPROFILE\\.local\\bin", "User")');
+  assert.equal(w.run, '& "C:\\Users\\USER3\\.local\\bin\\claude.exe"');
+  assert.equal(pathFix('codex', 'C:\\Users\\U\\AppData\\Roaming\\npm', 'win').run, '& "C:\\Users\\U\\AppData\\Roaming\\npm\\codex.cmd"');
+  const m = pathFix('claude', '/Users/u/.local/bin', 'mac');
+  assert.equal(m.fix, `echo 'export PATH="/Users/u/.local/bin:$PATH"' >> ~/.zshrc`);
+  assert.equal(m.run, '"/Users/u/.local/bin/claude"');
 });

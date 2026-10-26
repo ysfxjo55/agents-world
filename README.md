@@ -46,6 +46,11 @@ npm start
 ```
 Then open http://localhost:4321. Or double-click **Agent World.cmd**.
 
+**Windows: "claude is not recognized" after installing Claude Code.** The official installer puts `claude.exe` in `C:\Users\<you>\.local\bin` and may warn that this folder is not on your PATH. Agent World finds it there anyway, and the guide's "Connect your AI" step shows the fix. To fix it yourself, paste this in PowerShell, then open a NEW PowerShell window and run `claude` to log in:
+```
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","User") + ";$env:USERPROFILE\.local\bin", "User")
+```
+
 The app only listens on 127.0.0.1, so other computers on your network cannot reach it.
 
 ### First steps guide

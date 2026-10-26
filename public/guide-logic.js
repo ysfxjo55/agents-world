@@ -57,6 +57,22 @@ export const ENGINES = {
     login: 'opencode', loginHow: 'Run it, type /connect and follow the steps. Optional: Bella and Interstellar need Claude Code or Codex.' },
 };
 
+/**
+ * Installed, but its folder is not on PATH (the Claude Code installer on Windows warns about this): the commands that fix it.
+ * fix adds the folder to your PATH for good; run starts it once by its full path, so you can log in right away.
+ * @param {string} bin  'claude' | 'codex' | 'opencode'
+ * @param {string} dir  the folder it was found in
+ * @param {'win' | 'mac'} os
+ */
+export function pathFix(bin, dir, os) {
+  if (os === 'win') {
+    const folder = /\\\.local\\bin$/i.test(dir) ? '$env:USERPROFILE\\.local\\bin' : dir;
+    return { fix: `[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path","User") + ";${folder}", "User")`,
+      run: `& "${dir}\\${bin}${/\\npm$/i.test(dir) ? '.cmd' : '.exe'}"`, where: 'Windows', shell: 'PowerShell' };
+  }
+  return { fix: `echo 'export PATH="${dir}:$PATH"' >> ~/.zshrc`, run: `"${dir}/${bin}"`, where: 'your terminal', shell: 'Terminal' };
+}
+
 /** Does at least one engine work (installed and logged in)? Bella and Interstellar need Claude Code or Codex; OpenCode alone runs plain chats. */
 export const engineWorks = (found = {}) => Object.values(found).some(e => e && e.installed && e.loggedIn !== false);
 

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import os from 'node:os';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { HttpError } from './auth.js';
 
@@ -44,10 +45,28 @@ export function isTodayChat(session, lifeDir) {
 
 // PATH for starting claude / codex / opencode. Mac and Linux: the usual install folders first, joined with ":".
 // Windows: PATH is separated by ";" and is called "Path"; the native Claude Code installer uses %USERPROFILE%\.local\bin.
-export function toolPath(env = process.env, platform = process.platform, home = os.homedir()) {
-  if (platform === 'win32') return [path.win32.join(home, '.local', 'bin'), env.PATH || env.Path || ''].join(';');
-  return [path.join(home, '.local/bin'), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', env.PATH || ''].join(':');
+// The folders installers put these programs in, even when they are not on PATH yet (the Claude Code installer on Windows says so).
+export function knownDirs(env = process.env, platform = process.platform, home = os.homedir()) {
+  if (platform === 'win32') return [path.win32.join(home, '.local', 'bin'), ...(env.APPDATA ? [path.win32.join(env.APPDATA, 'npm')] : [])];
+  return [path.join(home, '.local/bin'), path.join(home, '.npm-global/bin'), '/opt/homebrew/bin', '/usr/local/bin'];
 }
+export function toolPath(env = process.env, platform = process.platform, home = os.homedir()) {
+  if (platform === 'win32') return [...knownDirs(env, platform, home), env.PATH || env.Path || '', userPath].filter(Boolean).join(';');
+  return [...knownDirs(env, platform, home), '/usr/bin', '/bin', env.PATH || ''].join(':');
+}
+
+// Windows only: the user's PATH as saved now (System Properties or the guide's fix), not as it was when the app started.
+// "Check again" calls this, so a PATH fix works without restarting the app.
+let userPath = '';
+export function refreshUserPath({ platform = process.platform, env = process.env, run = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', timeout: 5000, windowsHide: true }) } = {}) {
+  if (platform !== 'win32') return '';
+  try {
+    const m = run('reg', ['query', 'HKCU\\Environment', '/v', 'Path']).match(/Path\s+REG_(?:EXPAND_)?SZ\s+(.*)/i);
+    userPath = m ? m[1].trim().replace(/%([^%]+)%/g, (all, k) => env[k] ?? env[k.toUpperCase()] ?? all) : '';
+  } catch { userPath = ''; }
+  return userPath;
+}
+export const savedUserPath = () => userPath;
 
 // The environment for a child process with PATH set as above. On Windows the "Path" key is replaced, not doubled.
 export function withToolPath(env = process.env, platform = process.platform, home = os.homedir()) {

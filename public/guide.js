@@ -1,7 +1,7 @@
 // The first-steps guide on screen: dims the page, rings the real button, and shows one small card.
 // The rules live in guide-logic.js. The pages tell us what happened with window events named 'aw-guide'
 // (detail = { type: 'selected' | 'sent' | 'started' | 'run-done' | 'status', ... }).
-import { KEY, ENGINES, load, save, onEvent, current, close, restart, onPage, label, engineWorks } from './guide-logic.js';
+import { KEY, ENGINES, load, save, onEvent, current, close, restart, onPage, label, engineWorks, pathFix } from './guide-logic.js';
 
 const isTop = (() => { try { return window.self === window.top; } catch { return false; } })();
 const page = document.getElementById('world') ? 'world' : 'chat';
@@ -103,10 +103,16 @@ function engineList() {
   const copy = (cmd) => { const row = el('div', 'gd-cmd'), code = el('code', '', cmd), b = el('button', 'gd-btn', 'Copy'); b.type = 'button';
     b.onclick = () => navigator.clipboard.writeText(cmd).then(() => { b.textContent = 'Copied'; setTimeout(() => (b.textContent = 'Copy'), 1200); }).catch(() => {}); row.append(code, b); return row; };
   for (const [id, e] of Object.entries(ENGINES)) {
-    const f = found[id] || {}, ok = f.installed && f.loggedIn !== false;
-    const d = el('details', 'gd-eng' + (ok ? ' ok' : '')); d.open = !ok && id !== 'opencode' && !engineWorks(found);
-    d.append(el('summary', '', `${e.name}: ${ok ? (f.loggedIn ? 'ready' : 'installed') : f.installed ? 'installed, not logged in' : 'not found'}`));
-    if (!ok) {
+    const f = found[id] || {}, ok = f.installed && f.loggedIn !== false, lost = f.installed && f.onPath === false && f.dir;
+    const fx = lost ? pathFix(id, f.dir, os) : null;
+    const d = el('details', 'gd-eng' + (ok ? ' ok' : '')); d.open = (!ok && id !== 'opencode' && !engineWorks(found)) || (lost && !f.loggedIn);
+    d.append(el('summary', '', `${e.name}: ${ok ? (f.loggedIn ? 'ready' : 'installed') : lost ? `installed, but ${fx.where} can't find it yet` : f.installed ? 'installed, not logged in' : 'not found'}`));
+    if (lost) {                       // installed in a folder that is not on PATH: typing its name in a terminal fails
+      d.append(el('p', 'gd-soft', `It is in ${f.dir}, which is not on your PATH. Agent World can still run it.`));
+      d.append(el('p', '', `1. Fix it for good (paste in ${fx.shell}):`)); d.append(copy(fx.fix));
+      d.append(el('p', '', `2. Open a NEW ${fx.shell} window, then log in: ${e.loginHow}`)); d.append(copy(e.login));
+      d.append(el('p', 'gd-soft', 'Or log in right now without step 1:')); d.append(copy(fx.run));
+    } else if (!ok) {
       d.append(el('p', 'gd-soft', `Needs ${e.plan}.`));
       if (!f.installed) { d.append(el('p', '', '1. Install it (in Terminal):')); d.append(copy(e.install[os])); }
       d.append(el('p', '', `${f.installed ? '1' : '2'}. Log in: ${e.loginHow}`)); d.append(copy(e.login));

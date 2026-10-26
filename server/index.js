@@ -21,7 +21,7 @@ import { claudeProcessPattern, sessionBusy, liveRuns } from './runs.js';
 import { config, saveName, saveSettings } from './config.js';
 import { detectEngines, engineSummary, setEngines, currentEngines } from './engines.js';
 import { checkRequest, originAllowed, HttpError, safeDecode, ownTailnetIps } from './auth.js';
-import { body, rawBody, resolveCwd, isTodayChat } from './util.js';
+import { body, rawBody, resolveCwd, isTodayChat, refreshUserPath } from './util.js';
 import { resolveDownload } from './files.js';
 import { saveAny, uploadPath, cleanUploads } from './uploads.js';
 import { researchRoutes, resumeOrphans } from './research-api.js';
@@ -52,7 +52,7 @@ if (process.argv.includes('--test-notify')) {             // npm run test-notify
 }
 
 // Which AI programs are installed and logged in. Looked up at start and again when the guide asks ("Check again").
-const refreshEngines = () => setEngines(engineSummary(detectEngines(), config.agents));
+const refreshEngines = () => { refreshUserPath(); return setEngines(engineSummary(detectEngines(), config.agents)); };   // Windows: re-reads your saved PATH
 refreshEngines();
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml' };
