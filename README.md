@@ -84,7 +84,23 @@ Copy `config.example.json` to `data/config.json` and edit it. Every setting is o
 - `today`: `true` turns on the Today page (a daily plan page that opens once a day). Off by default.
 - `hosts` and `owner`: only for private remote access with Tailscale (see below). Leave them empty otherwise.
 
-To change Bella, Interstellar or your other agents (names, personality, rules), see [starter/README.md](starter/README.md).
+## Make it yours
+**Change Bella's or Interstellar's instructions.** On the Chat page, open **Instructions** in the sidebar. Pick a tab, edit the text, press **Save**. **Reset to default** brings back the original. Changes apply to your next new chat. If you prefer files: Bella's instructions are in `~/.claude/agents/bella.md`, Interstellar's in `data/interstellar/AGENTS.md` (more in [starter/README.md](starter/README.md)).
+
+**Tell the agents about you.** The **About me** tab (or the guide's "Tell your agents about you" step) saves a few lines, for example your level and how you like answers. They are stored as `about` in `data/config.json` and every agent reads them.
+
+**Add your own agents (Claude Code).** Every agent file in `~/.claude/agents/` shows up in the **Agent Guild** in the world, and you can chat with it or let Bella start it. Make one with `/agents` inside Claude Code, or write a file like `~/.claude/agents/tester.md`:
+```markdown
+---
+name: tester
+description: Writes and runs tests, and explains failures in plain words.
+---
+You are a careful tester. Run the tests, then explain each failure in one short sentence.
+```
+Reload the page and it appears. (A file you put in this app's `agents/` folder is copied there on the next start, if no file with that name exists yet.)
+
+**Codex:** Codex has no agent files like this, so Agents World cannot show your own Codex agents yet. Codex reads an `AGENTS.md` file in a project folder as that folder's instructions, which works for any Codex session there.
+
 
 ## Safety: read this before you use the chat
 The agents can run commands on your computer. Agents World makes this visible and asks first, but you decide what each chat may do. The **access mode** (top right of the chat page) sets the limit for Claude Code:

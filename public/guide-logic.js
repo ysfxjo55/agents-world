@@ -19,6 +19,10 @@ export const STEPS = [
     title: 'What should the agents call you?',
     text: 'Type your first name. It is saved on this computer only, in data/config.json. The agents use it after the app restarts.',
     accepts: (ev) => ev.type === 'name-saved' },
+  { id: 'about', page: 'any', target: null, input: 'about',
+    title: 'Tell your agents about you',
+    text: 'A few lines every agent should know: your level, your language, how you like answers. You can change it later in Chat, Instructions. Skip it if you like.',
+    accepts: (ev) => ev.type === 'about-saved' },
   { id: 'chat', page: 'chat', target: '.composer',
     title: 'Start an agent',
     text: 'This is a new chat. Keep the access mode on "Read-only" (top right), type a tiny task like "say hello", and send it.',
@@ -77,15 +81,15 @@ export function pathFix(bin, dir, os) {
 export const engineWorks = (found = {}) => Object.values(found).some(e => e && e.installed && e.loggedIn !== false);
 
 /** A fresh guide, open at the first step. */
-export const fresh = () => ({ v: 2, status: 'active', step: 0, runKey: null });
+export const fresh = () => ({ v: 3, status: 'active', step: 0, runKey: null });
 
 /** Read saved progress. Nothing saved yet (a first visit) means a fresh, open guide. Broken data also starts fresh. */
 export function load(raw) {
   if (raw == null) return fresh();
   try {
     const s = JSON.parse(raw);
-    if (!s || s.v !== 2 || !['active', 'closed', 'done'].includes(s.status) || !Number.isInteger(s.step) || s.step < 0 || s.step >= STEPS.length) return fresh();
-    return { v: 2, status: s.status, step: s.step, runKey: typeof s.runKey === 'string' ? s.runKey : null };
+    if (!s || s.v !== 3 || !['active', 'closed', 'done'].includes(s.status) || !Number.isInteger(s.step) || s.step < 0 || s.step >= STEPS.length) return fresh();
+    return { v: 3, status: s.status, step: s.step, runKey: typeof s.runKey === 'string' ? s.runKey : null };
   } catch { return fresh(); }
 }
 export const save = (s) => JSON.stringify(s);

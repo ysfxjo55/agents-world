@@ -20,8 +20,9 @@ import { startRun, MODES, INTERSTELLAR_DIR, chatAccessError, maxModeForToken } f
 import { trashSession, listTrash, restoreSession, emptyTrash } from './trash.js';
 import { claudeProcessPattern, sessionBusy, liveRuns } from './runs.js';
 import { config, saveName, saveSettings } from './config.js';
-import { detectEngines, engineSummary, setEngines, currentEngines } from './engines.js';
+import { detectEngines, engineSummary, setEngines, currentEngines, agentShown } from './engines.js';
 import { createUpdater, RESTART_CODE } from './updater.js';
+import { readAll, saveOne, resetOne } from './instructions.js';
 import { checkRequest, originAllowed, HttpError, safeDecode, ownTailnetIps } from './auth.js';
 import { body, rawBody, resolveCwd, isTodayChat, refreshUserPath, inlineScriptHashes } from './util.js';
 import { resolveDownload } from './files.js';
@@ -188,8 +189,12 @@ async function handle(req, res) {
     clients.add(res); req.on('close', () => clients.delete(res)); return;
   }
   if (p === '/api/snapshot') { fresh(); return json(res, 200, snapshot); }
-  if (p === '/api/config') return json(res, 200, { links: config.links, remote: auth.remote, lifeDir: LIFE_DIR, name: config.name, today: config.today, startChosen: config.showSince !== null, engines: currentEngines() });
+  if (p === '/api/config') return json(res, 200, { links: config.links, remote: auth.remote, lifeDir: LIFE_DIR, name: config.name, about: auth.remote ? '' : config.about, today: config.today, startChosen: config.showSince !== null, engines: currentEngines() });
   if (p === '/api/engines' && !write) return json(res, 200, refreshEngines());
+  if (p === '/api/instructions' && !write) {                         // the Instructions panel (only on this computer: they are your agents' rules)
+    if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
+    return json(res, 200, { ...readAll(), shown: { bella: agentShown('bella'), interstellar: agentShown('interstellar') } });
+  }
   if (p === '/api/update' && !write) return json(res, 200, { ...updater.state, supervised: !!process.env.AGENT_WORLD_SUPERVISED });   // "Check again" in the guide
   if (await familyInboxRoute({ req, res, p, auth, json, body, dir: process.env.AGENT_WORLD_FAMILY_DIR || path.join(ROOT, 'data', 'family'), logAction })) return;
   fresh();
@@ -249,6 +254,11 @@ async function handle(req, res) {
       if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
       if (!process.env.AGENT_WORLD_SUPERVISED) return json(res, 200, { ok: false, error: 'Start Agents World with npm start or its start file to update from here.' });
       return json(res, 200, await updater.install());
+    }
+    if (p === '/api/instructions' || p === '/api/instructions/reset') {
+      if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
+      const b = await body(req, 60_000), r = p.endsWith('/reset') ? resetOne(String(b?.name)) : saveOne(String(b?.name), b?.text);
+      return json(res, r.error ? 400 : 200, r);
     }
     if (p === '/api/settings/start') {                                 // the guide's first step: an empty world, or your existing sessions
       if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });

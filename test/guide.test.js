@@ -22,6 +22,7 @@ test('each step moves on only on its own event', () => {
     ['welcome', { type: 'selected', session: true }, { type: 'next' }],
     ['connect', { type: 'next' }, { type: 'engine-ok' }],
     ['name', { type: 'next' }, { type: 'name-saved' }],
+    ['about', { type: 'name-saved' }, { type: 'about-saved' }],
     ['world', { type: 'selected', session: false }, { type: 'selected', session: true }],
     ['chat', { type: 'sent', mode: 'full' }, { type: 'sent', mode: 'readonly' }],
     ['wait', { type: 'sent', mode: 'readonly' }, { type: 'run-done', key: 'k' }],
@@ -41,7 +42,7 @@ test('the wait step only finishes on the run it started', () => {
   assert.equal(idOf(s), 'wait');
   assert.equal(onEvent(s, { type: 'run-done', key: 'claude:other' }), s);
   assert.equal(idOf(onEvent(s, { type: 'run-done', key: 'claude:abc' })), 'access');
-  assert.deepEqual(STEPS.map(x => x.id), ['welcome', 'connect', 'name', 'chat', 'wait', 'access', 'world', 'done']);
+  assert.deepEqual(STEPS.map(x => x.id), ['welcome', 'connect', 'name', 'about', 'chat', 'wait', 'access', 'world', 'done']);
 });
 
 test('"started" outside the wait step changes nothing', () => {
@@ -50,7 +51,7 @@ test('"started" outside the wait step changes nothing', () => {
 });
 
 test('skip moves on one step; the last step finishes the guide', () => {
-  assert.equal(idOf(onEvent(at('name'), { type: 'skip' })), 'chat');
+  assert.equal(idOf(onEvent(at('name'), { type: 'skip' })), 'about');
   const end = onEvent(at('done'), { type: 'next' });
   assert.equal(end.status, 'done');
   assert.equal(current(end), null);
@@ -72,7 +73,7 @@ test('closed stays closed after a reload, and the Guide button starts again', ()
 });
 
 test('broken saved data starts a fresh guide', () => {
-  for (const raw of ['nope', '{}', '{"v":2,"status":"active","step":99}', '{"v":2,"status":"weird","step":0}', '{"v":1,"status":"active","step":3}', 'null']) assert.deepEqual(load(raw), fresh(), raw);
+  for (const raw of ['nope', '{}', '{"v":3,"status":"active","step":99}', '{"v":3,"status":"weird","step":0}', '{"v":2,"status":"active","step":3}', 'null']) assert.deepEqual(load(raw), fresh(), raw);
 });
 
 test('steps know their page', () => {
@@ -259,4 +260,26 @@ test('git update: a package-lock.json changed by an older npm is reset, pulled, 
   const calls = []; updateGit('/x', (cmd, args) => { calls.push(`${cmd} ${args.join(' ')}`); return cmd === 'git' && args[0] === 'status' ? ' M package-lock.json\n' : ''; });
   assert.deepEqual(calls, ['git status --porcelain --untracked-files=no', 'git checkout -- package-lock.json', 'git pull --ff-only origin main', 'npm ci --no-audit --no-fund']);
   assert.throws(() => updateGit('/x', () => ' M package-lock.json\n M server/index.js\n'), /changed some app files/);
+});
+
+test('Instructions panel: save, keep Bella findable, size limits, reset to default, about line', async () => {
+  const { saveOne, resetOne, readAll, checkBella, LIMITS } = await import('../server/instructions.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-ins-'));
+  const places = { bella: { file: path.join(dir, 'agents', 'bella.md'), starter: path.join(dir, 'bella.start.md') }, interstellar: { file: path.join(dir, 'data', 'AGENTS.md'), starter: path.join(dir, 'int.start.md') } };
+  fs.writeFileSync(places.bella.starter, '---\nname: bella\n---\nDefault Bella.'); fs.writeFileSync(places.interstellar.starter, 'Default Interstellar.');
+  let about = null; const saveAbout = (t) => { about = t; };
+  assert.deepEqual(saveOne('bella', '---\r\nname: bella\r\n---\r\nKind and short.', { places, saveAbout }), { ok: true });
+  assert.match(saveOne('bella', 'no header', { places, saveAbout }).error, /first lines/);
+  assert.equal(checkBella('---\nname: other\n---\nx'), false);
+  assert.match(saveOne('interstellar', '   ', { places, saveAbout }).error, /empty/);
+  assert.match(saveOne('interstellar', 'x'.repeat(LIMITS.file + 1), { places, saveAbout }).error, /under/);
+  assert.deepEqual(saveOne('interstellar', 'Builds things.', { places, saveAbout }), { ok: true });
+  assert.match(saveOne('about', 'y'.repeat(LIMITS.about + 1), { places, saveAbout }).error, /under/);
+  assert.deepEqual(saveOne('about', '  I am learning.  ', { places, saveAbout }), { ok: true }); assert.equal(about, 'I am learning.');
+  assert.match(saveOne('robot', 'x', { places, saveAbout }).error, /Unknown/);
+  assert.deepEqual(readAll(places, 'me'), { bella: '---\r\nname: bella\r\n---\r\nKind and short.', interstellar: 'Builds things.', about: 'me' });
+  assert.equal(resetOne('interstellar', { places, saveAbout }).text, 'Default Interstellar.');
+  assert.equal(fs.readFileSync(places.interstellar.file, 'utf8'), 'Default Interstellar.');
+  resetOne('about', { places, saveAbout }); assert.equal(about, '');
+  fs.rmSync(dir, { recursive: true, force: true });
 });

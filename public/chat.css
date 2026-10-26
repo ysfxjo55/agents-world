@@ -243,3 +243,17 @@ body.embed #researchBtn{display:none}
 
 .avfail{position:absolute;inset:auto 0 24px 0;margin:0 auto;width:max-content;max-width:90%;padding:10px 14px;border-radius:10px;background:var(--panel,#262626);border:1px solid var(--line,#444);color:var(--fg,#eee);font-size:14px;z-index:5}
 .avfail button{margin-left:8px;padding:4px 10px;cursor:pointer}
+/* the Instructions panel (instructions.js) */
+.ins-shade{position:fixed;inset:0;background:rgba(8,8,12,.6);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px}
+.ins-card{background:#1c1c21;color:#e8e8ee;border:1px solid #3a3a42;border-radius:14px;width:min(720px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:16px 18px;box-sizing:border-box;font-size:14px}
+.ins-top{display:flex;align-items:center;justify-content:space-between}.ins-top h2{margin:0;font-size:17px}
+.ins-x{background:none;border:0;color:#9a9aa4;font-size:22px;cursor:pointer}
+.ins-tabs{display:flex;gap:6px;margin:12px 0 8px;flex-wrap:wrap}
+.ins-tab{background:#2c2c33;color:#c9c9cf;border:1px solid #44444d;border-radius:8px;padding:5px 12px;cursor:pointer;font:inherit}
+.ins-tab[aria-selected="true"]{background:#e8e8ee;color:#151518;border-color:#e8e8ee}
+.ins-help{color:#a8a8b2;font-size:13px;margin:4px 0 8px}
+.ins-text{width:100%;box-sizing:border-box;background:#121216;color:#e8e8ee;border:1px solid #44444d;border-radius:9px;padding:10px;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+.ins-row{display:flex;gap:8px;margin-top:8px}.ins-row button{border-radius:8px;padding:6px 14px;font:inherit;cursor:pointer;border:1px solid #44444d;background:#2c2c33;color:#e8e8ee}
+.ins-row .ins-save{background:#e8e8ee;color:#151518;border-color:#e8e8ee;font-weight:600}
+.ins-msg{color:#a8a8b2;font-size:13px;margin:8px 0 0}.ins-msg:empty{display:none}
+.ins-card :focus-visible{outline:2px solid #8ab4ff;outline-offset:2px}

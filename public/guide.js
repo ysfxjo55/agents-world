@@ -61,6 +61,7 @@ function fill(step, away) {
     if (step.warn) card.append(el('p', 'gd-warn', step.warn));
     if (step.wrongMode) { const w = el('p', 'gd-warn', step.wrongMode); w.id = 'gdWrong'; w.hidden = true; card.append(w); }
     if (step.input === 'name') card.append(nameForm());
+    if (step.input === 'about') card.append(aboutForm());
     if (step.choice === 'start' && cfg && !cfg.startChosen) card.append(startChoice());
     if (step.engines) card.append(engineList());
     if (step.notify) card.append(notifyHelp());
@@ -71,7 +72,7 @@ function fill(step, away) {
   if (step.id === 'welcome') { const no = el('button', 'gd-link', 'Not now'); no.type = 'button'; no.onclick = quit; row.append(no); }
   card.append(row);
   const box = !away && step.target ? targetEl()?.querySelector('textarea') : null;   // the chat step: the cursor goes in the message box
-  setTimeout(() => (box || card.querySelector('input, .gd-btn.primary') || card.querySelector('button'))?.focus(), 0);
+  setTimeout(() => (box || card.querySelector('input, textarea, .gd-btn.primary') || card.querySelector('button'))?.focus(), 0);
 }
 function nameForm() {
   const f = el('form', 'gd-form'), inp = el('input'); inp.id = 'gdName'; inp.maxLength = 40; inp.autocomplete = 'given-name'; inp.placeholder = 'Your first name'; inp.setAttribute('aria-label', 'Your first name');
@@ -128,6 +129,18 @@ function engineList() {
   row.append(go, again); box.append(row);
   if (!engineWorks(found)) box.append(el('p', 'gd-soft', 'After installing, run the login command once, then press "Check again". Still "not found"? Restart Agents World.'));
   return box;
+}
+function aboutForm() {
+  const f = el('form', 'gd-form'), ta = el('textarea'); ta.id = 'gdAbout'; ta.rows = 4; ta.maxLength = 1500; ta.placeholder = 'For example: I am learning to code. English is my second language, so short sentences please.'; ta.setAttribute('aria-label', 'About you');
+  ta.style.cssText = 'flex:1 1 100%;background:#121216;color:#fff;border:1px solid #44444d;border-radius:9px;padding:7px 10px;font:inherit;resize:vertical';
+  const ok = el('button', 'gd-btn primary', 'Save'); ok.type = 'submit'; const msg = el('p', 'gd-soft');
+  if (cfg?.about) ta.value = cfg.about;
+  f.onsubmit = async (e) => {
+    e.preventDefault(); ok.disabled = true;
+    const r = await post('/api/instructions', { name: 'about', text: ta.value }).catch(() => ({ error: 'Could not reach the app.' }));
+    ok.disabled = false; if (r.ok) feed({ type: 'about-saved' }); else msg.textContent = r.error || 'Could not save it.';
+  };
+  f.append(ta, ok, msg); return f;
 }
 function notifyHelp() {
   const d = el('details', 'gd-help'); d.append(el('summary', '', 'No notification?'));
