@@ -49,7 +49,7 @@ export function isTodayChat(session, lifeDir) {
 // The folders installers put these programs in, even when they are not on PATH yet (the Claude Code installer on Windows says so).
 export function knownDirs(env = process.env, platform = process.platform, home = os.homedir()) {
   if (platform === 'win32') return [path.win32.join(home, '.local', 'bin'), ...(env.APPDATA ? [path.win32.join(env.APPDATA, 'npm')] : [])];
-  return [path.join(home, '.local/bin'), path.join(home, '.npm-global/bin'), '/opt/homebrew/bin', '/usr/local/bin'];
+  return [path.posix.join(home, '.local/bin'), path.posix.join(home, '.npm-global/bin'), '/opt/homebrew/bin', '/usr/local/bin'];   // posix: right even when tested on Windows
 }
 export function toolPath(env = process.env, platform = process.platform, home = os.homedir()) {
   if (platform === 'win32') return [...knownDirs(env, platform, home), env.PATH || env.Path || '', userPath].filter(Boolean).join(';');

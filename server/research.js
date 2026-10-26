@@ -110,6 +110,14 @@ export function listJobs() {
 }
 export function readReport(id) { try { return fs.readFileSync(path.join(workDir(id), 'report.md'), 'utf8').slice(0, 2_000_000); } catch { return null; } }
 export function readReview(id) { try { return fs.readFileSync(path.join(workDir(id), 'review.md'), 'utf8').slice(0, 100000); } catch { return null; } }
+/** Stop a research runner and the AI program it started. Mac/Linux: SIGTERM to its whole process group.
+ * Windows has no process groups or SIGTERM, so taskkill /T ends the runner and everything it started.
+ * @param {number} pid
+ * @param {{ platform?: string, kill?: (pid: number, sig: string) => unknown, run?: (cmd: string, args: string[]) => unknown }} [io] */
+export function stopRunner(pid, { platform = process.platform, kill = process.kill.bind(process), run = (cmd, args) => execFileSync(cmd, args, { stdio: 'ignore', windowsHide: true }) } = {}) {
+  if (platform === 'win32') { try { run('taskkill', ['/PID', String(Number(pid)), '/T', '/F']); } catch { /* already gone */ } return; }
+  try { kill(-pid, 'SIGTERM'); } catch { try { kill(pid, 'SIGTERM'); } catch { /* already gone */ } }
+}
 export const pidAlive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
 
 // session key -> { job, title } for every session a research job started (so the world can draw them at the Lab)

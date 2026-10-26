@@ -6,7 +6,7 @@ import path from 'node:path';
 
 // a throw-away home folder, never the real sessions
 const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-home-'));
-process.env.HOME = HOME;
+process.env.HOME = HOME; process.env.USERPROFILE = HOME;   // Windows finds the home folder through USERPROFILE
 const { claudeTranscript } = await import('../server/sources/claude.js');
 
 test('a session file over 30 MB still shows its newest message', () => {

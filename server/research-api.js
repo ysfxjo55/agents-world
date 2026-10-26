@@ -84,7 +84,7 @@ export async function researchRoutes({ req, res, p, write, auth, json, body }) {
     if (m[2] === 'stop') {
       // write "stopped" FIRST, then signal: the runner can tell a user stop from a Mac shutdown (which must resume)
       const latest = R.readJob(j.id) || j; if (latest.status === 'running') { latest.status = 'stopped'; R.writeJob(latest); }   // re-read right before writing
-      if (alive) { try { process.kill(-j.runnerPid, 'SIGTERM'); } catch { try { process.kill(j.runnerPid, 'SIGTERM'); } catch { /* already gone */ } } }   // only ever a verified runner
+      if (alive) R.stopRunner(j.runnerPid);   // only ever a verified runner; on Windows this also ends the claude it started
       return json(res, 200, { ok: true }), true;
     }
     if (j.status === 'done') return json(res, 400, { error: 'This job is already finished.' }), true;

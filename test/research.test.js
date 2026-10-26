@@ -117,9 +117,10 @@ test('uploaded documents are checked by their content, not their name', async ()
 
 /* ---------- the review's findings, as tests ---------- */
 test('the researcher environment is an allow-list: tokens and keys never reach it', () => {
-  const env = R.cleanEnv({ PATH: '/usr/bin', HOME: '/h', GH_TOKEN: 'secret1', AWS_SECRET_ACCESS_KEY: 'secret2', OPENAI_API_KEY: 'secret3', ANTHROPIC_API_KEY: 'ok', LANG: 'en_US.UTF-8' }, ['/extra']);
+  const env = R.cleanEnv({ PATH: '/usr/bin', HOME: '/h', GH_TOKEN: 'secret1', AWS_SECRET_ACCESS_KEY: 'secret2', OPENAI_API_KEY: 'secret3', ANTHROPIC_API_KEY: 'ok', LANG: 'en_US.UTF-8' }, ['/extra'], 'darwin');
   assert.equal(env.GH_TOKEN, undefined); assert.equal(env.AWS_SECRET_ACCESS_KEY, undefined); assert.equal(env.OPENAI_API_KEY, undefined);
   assert.equal(env.ANTHROPIC_API_KEY, 'ok'); assert.equal(env.HOME, '/h'); assert.ok(env.PATH.startsWith('/extra:'));
+  assert.ok(R.cleanEnv({ Path: 'C:\\Windows' }, ['C:\\extra'], 'win32').PATH.startsWith('C:\\extra;'));   // Windows joins with ;
 });
 test('a pid only counts as the runner if its command line says so (pids get reused after a reboot)', () => {
   const job = { id: '20261010-abcdef', runnerPid: 4242 };
@@ -161,29 +162,33 @@ const waitFor = async (fn, ms = 8000) => { const t0 = Date.now(); while (Date.no
 test('Stop (status written first) ends the runner and the status stays "stopped"', async () => {
   const { job, c } = startSlow();
   assert.ok(await waitFor(() => R.readJob(job.id)?.phases?.some(p => p.status === 'running')), 'runner started its first phase');
-  const j = R.readJob(job.id); j.status = 'stopped'; R.writeJob(j); process.kill(-c.pid, 'SIGTERM');                     // exactly what the Stop route does
+  const j = R.readJob(job.id); j.status = 'stopped'; R.writeJob(j); R.stopRunner(c.pid);                               // exactly what the Stop route does
   assert.ok(await waitFor(() => !R.pidAlive(c.pid)), 'runner exited');
   assert.equal(R.readJob(job.id).status, 'stopped');
 });
 test('a Mac shutdown (plain SIGTERM) leaves the job "running", so it resumes by itself later', async () => {
   const { job, c } = startSlow();
   assert.ok(await waitFor(() => R.readJob(job.id)?.phases?.some(p => p.status === 'running')));
-  process.kill(c.pid, 'SIGTERM');
+  process.kill(c.pid, 'SIGTERM');                                  // on Windows this ends the process at once, like a power cut
   assert.ok(await waitFor(() => !R.pidAlive(c.pid)), 'runner exited');
-  const after = R.readJob(job.id); assert.equal(after.status, 'running'); assert.equal(after.runnerPid, null);          // resumeOrphans will pick this up
+  const after = R.readJob(job.id); assert.equal(after.status, 'running');
+  if (process.platform !== 'win32') assert.equal(after.runnerPid, null);   // Mac/Linux: the runner clears its pid on the way out
+  assert.equal(R.runnerAlive(after), false);                                 // either way resumeOrphans sees no live runner and picks this up
 });
 test('a second runner for the same job exits at once instead of doubling the work', async t => {
-  try { childProcess.execFileSync('ps', ['-p', String(process.pid), '-o', 'command='], { stdio: 'pipe' }); }
-  catch (e) {
-    if (e.code === 'EPERM') return t.skip('Sandbox denies ps; duplicate runner detection requires process inspection.');
-    throw e;
+  if (process.platform !== 'win32') {   // Windows reads command lines with PowerShell instead of ps
+    try { childProcess.execFileSync('ps', ['-p', String(process.pid), '-o', 'command='], { stdio: 'pipe' }); }
+    catch (e) {
+      if (e.code === 'EPERM') return t.skip('Sandbox denies ps; duplicate runner detection requires process inspection.');
+      throw e;
+    }
   }
   const { job, c } = startSlow();
   assert.ok(await waitFor(() => R.readJob(job.id)?.runnerPid === c.pid));
   const { spawn } = childProcess; let out = '';
   const second = spawn(process.execPath, [RUNNER, job.id], { env: { ...process.env, AGENT_WORLD_RESEARCH_BIN: slow }, timeout: 8000 }); second.stdout.on('data', d => { out += d; });
   const code = await new Promise(r => second.on('close', r));
-  process.kill(-c.pid, 'SIGKILL');
+  R.stopRunner(c.pid);
   assert.equal(code, 0); assert.match(out, /already working/);
 });
 test('a hung claude (no output) is killed by the idle watchdog and the run is retried', async () => {
@@ -191,7 +196,7 @@ test('a hung claude (no output) is killed by the idle watchdog and the run is re
   R.writeJob(job);
   const { spawn } = childProcess; const c = spawn(process.execPath, [RUNNER, job.id], { env: { ...process.env, AGENT_WORLD_RESEARCH_BIN: slow, AGENT_WORLD_RESEARCH_IDLE_MS: '700', AGENT_WORLD_RESEARCH_NET_MS: '200' }, stdio: 'ignore', detached: true });
   assert.ok(await waitFor(() => (R.readJob(job.id)?.phases?.[0]?.attempts || 0) >= 2, 15000), 'the hung run was killed and retried');
-  process.kill(-c.pid, 'SIGKILL');
+  R.stopRunner(c.pid);
 });
 
 test('the researcher definition is read from the repo and handed to the CLI as JSON', () => {
@@ -235,4 +240,14 @@ test('a job whose runner died before saving a deadline still gets one from its s
   assert.equal(R.jobDeadline({ createdAt: start, maxHours: 2 }), start + 2 * 3600_000);
   assert.equal(R.jobDeadline({ startedAt: start, deadline: 5 }), 5);
   assert.ok(R.jobDeadline({}) > 0);
+});
+
+test('Stop on Windows ends the runner and everything it started with taskkill /T; Mac/Linux signal the process group', () => {
+  const calls = [];
+  R.stopRunner(1234, { platform: 'win32', run: (cmd, args) => calls.push(`${cmd} ${args.join(' ')}`) });
+  assert.deepEqual(calls, ['taskkill /PID 1234 /T /F']);
+  const sent = []; R.stopRunner(55, { platform: 'darwin', kill: (pid, sig) => { sent.push([pid, sig]); } });
+  assert.deepEqual(sent, [[-55, 'SIGTERM']]);
+  const fallback = []; R.stopRunner(56, { platform: 'linux', kill: (pid, sig) => { if (pid < 0) throw new Error('ESRCH'); fallback.push([pid, sig]); } });
+  assert.deepEqual(fallback, [[56, 'SIGTERM']]);
 });

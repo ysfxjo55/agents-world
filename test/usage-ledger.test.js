@@ -61,7 +61,7 @@ test('ledger survives reload, ignores partial/corrupt lines, deduplicates ids an
     const row = usage.finish();
     fs.appendFileSync(file, JSON.stringify({ ...row, prompt: 'PRIVATE PROMPT', apiKey: 'PRIVATE KEY' }) + '\nnot json\n{"unfinished":');
     const data = readUsage(file); assert.equal(data.records.length, 1); assert.equal(data.records[0].inputTokens, 100);
-    assert.equal(JSON.stringify(data.records).includes('PRIVATE'), false); assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    assert.equal(JSON.stringify(data.records).includes('PRIVATE'), false); if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);   // Windows has no Unix file permissions
     assert.equal(readUsage(path.join(dir, 'does-not-exist')).records.length, 0);
   } finally { if (old === undefined) delete process.env.AGENT_WORLD_USAGE_FILE; else process.env.AGENT_WORLD_USAGE_FILE = old; }
 });
