@@ -71,6 +71,9 @@ To use Agent World from your phone, use Tailscale (a private, encrypted network 
 3. Run `tailscale serve --bg 4321` and open `https://<your-computer>.<tailnet>.ts.net` on the phone.
 Remote requests can read and chat, but Full access, Empty Trash and starting agents with high access only work on the computer itself.
 
+## License
+Agent World is free software under the GNU AGPL-3.0. See [LICENSE](LICENSE).
+
 ## How it works
 
 ### Usage

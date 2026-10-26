@@ -4,6 +4,7 @@
   "description": "Your AI coding agents as a living 3D world",
   "type": "module",
   "private": true,
+  "license": "AGPL-3.0-only",
   "scripts": {
     "start": "node server/index.js",
     "snapshot": "node server/index.js --snapshot",
