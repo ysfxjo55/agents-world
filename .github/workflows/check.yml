@@ -1,0 +1,21 @@
+# Runs the checks (lint, typecheck, tests) on Windows, macOS and Linux for every push and pull request,
+# so problems like Windows line endings are caught before anyone downloads a new version.
+name: check
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
