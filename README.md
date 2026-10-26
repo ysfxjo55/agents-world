@@ -63,7 +63,7 @@ On your first visit a short guide opens. You learn the app by doing each step yo
 To check that alerts work: `npm run test-notify`. On macOS, if no banner appears, allow notifications for "Script Editor" in System Settings > Notifications. On Windows, check that notifications are on in Settings > System > Notifications.
 
 ## Updates
-Agents World checks GitHub when it starts and every 6 hours. When a newer version is ready, a small box shows what's new with **Update now** and **Later**. Update now installs it and restarts the app by itself; the page reloads.
+Agents World checks GitHub when it starts, every hour, and when you open the page (at most once every 10 minutes). **Check for updates** in the sidebar checks right away. When a newer version is ready, a small box shows what's new with **Update now** and **Later**. Update now installs it and restarts the app by itself; the page reloads.
 - Installed with `git clone`: it runs `git pull` (and `npm install` when needed). If you changed app files yourself, it stops and tells you.
 - Installed from a ZIP: it downloads the new files and copies them over the old ones. The replaced files are kept in `data/backups/`.
 - Your own things are never touched: `data/` (settings, Bella's memory, chats), `.env`, and your `~/.claude` files.

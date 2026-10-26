@@ -344,6 +344,7 @@ window.BellaCloseToday = closeApp;
 $('todayBtn').onclick = () => openApp('/today.html', 'Today');
 $('researchBtn').onclick = () => openApp('/research.html', 'Research Lab');
 $('usageBtn').onclick = () => openApp('/usage.html', 'Usage');
+$('updBtn').onclick = () => { closeSide(); import('./update-banner.js').then(m => m.checkNow()); };
 $('instrBtn').onclick = () => { closeSide(); import('./instructions.js').then(m => m.openInstructions()); };   // Bella's, Interstellar's and your own instructions
 $('avClose').onclick = closeApp;
 for (const id of ['newBtn', 'bellaBtn', 'agentsBtn']) $(id)?.addEventListener('click', closeApp);   // opening a chat must never stay hidden behind an app panel
@@ -362,7 +363,7 @@ fetch('/api/config').then(r => r.json()).then(cfg => {
   $('todayBtn').hidden = !cfg.today;
   if (cfg.remote) { S.remote = true; S.mode = 'readonly'; fillSelects(); renderTop(); } const box = $('linksList'); for (const l of cfg.links || []) { const b = el('button', ''); b.innerHTML = `<span class="ic">${icon(l.icon === 'chess' ? 'chess' : 'link', 17)}</span>`; b.append(l.name); const ch = el('span', 'chev', '↗'); b.append(ch); b.onclick = () => window.open(l.url, '_blank', 'noopener'); box.append(b); } }).catch(() => {});
 
-for (const [id, ic] of Object.entries({ bellaBtn: 'crown', newBtn: 'new', agentsBtn: 'guild', todayBtn: 'clock', researchBtn: 'research', usageBtn: 'usage', instrBtn: 'guild', selectBtn: 'select', trashBtn: 'trash' })) { const s = $(id)?.querySelector('.ic'); if (s) s.innerHTML = icon(ic, 17); }
+for (const [id, ic] of Object.entries({ bellaBtn: 'crown', newBtn: 'new', agentsBtn: 'guild', todayBtn: 'clock', researchBtn: 'research', usageBtn: 'usage', instrBtn: 'guild', updBtn: 'new', selectBtn: 'select', trashBtn: 'trash' })) { const s = $(id)?.querySelector('.ic'); if (s) s.innerHTML = icon(ic, 17); }
 
 // Bella's one ongoing thread: her own session, with the older Terminal conversation shown above it (read-only)
 async function openBella() {

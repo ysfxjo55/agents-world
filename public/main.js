@@ -300,6 +300,7 @@ $('focusBtn').onclick = () => {
   const on = document.body.classList.toggle('immersive'); closeSide(); select(null);
   try { if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); else if (!on && document.fullscreenElement) document.exitFullscreen(); } catch {}
 };
+$('updBtn').onclick = () => import('./update-banner.js').then(m => m.checkNow());   // sidebar footer: look for a new version now
 $('showAll').checked = state.showAll;
 $('showAll').onchange = (e) => { state.showAll = e.target.checked; ls.set('aw.showAll', state.showAll ? '1' : '0'); if (state.snap) apply(state.snap); };
 setInterval(() => { if (state.snap) { renderSidebar(visible(state.snap)); refreshCard(); } }, 20000);

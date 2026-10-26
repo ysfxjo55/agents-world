@@ -127,8 +127,10 @@ export async function updateZip(root = ROOT, { doFetch = fetch, run = runDefault
  */
 export function createUpdater({ settings = {}, busy = () => false, onInstalled = () => {}, doFetch = fetch, root = ROOT, log = (m) => console.log(m), run = runDefault } = {}) {
   const state = { enabled: settings.check !== false, auto: settings.auto === true, current: currentVersion(root), latest: null, notes: [], available: false, kind: installKind(root), installing: false, error: null, checkedAt: null };
-  async function check() {
+  /** Look on GitHub, unless we already looked less than minAgeMs ago (keeps us far below GitHub's limits). */
+  async function check({ minAgeMs = 0 } = {}) {
     if (!state.enabled) return state;
+    if (minAgeMs && state.checkedAt && Date.now() - state.checkedAt < minAgeMs) return state;
     try {
       const { version, changelog } = state.kind === 'git' ? latestFromGit(root, run) : await fetchLatest({ doFetch });
       state.latest = version; state.checkedAt = Date.now(); state.error = null;

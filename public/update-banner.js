@@ -5,9 +5,10 @@ const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls)
 const later = { get: () => { try { return localStorage.getItem('aw.updateLater'); } catch { return null; } }, set: (v) => { try { localStorage.setItem('aw.updateLater', v); } catch {} } };
 
 const preview = new URLSearchParams(location.search).has('preview-update');   // ?preview-update: see the box with a pretend version; nothing is installed
-async function show() {
-  const u = await fetch('/api/update' + (preview ? '?preview=1' : '')).then(r => r.json()).catch(() => null);
-  if (!u?.available || (!u.preview && later.get() === u.latest) || document.getElementById('awUpdate')) return;
+async function show(when = 'open') {
+  const u = await fetch('/api/update' + (preview ? '?preview=1' : `?check=${when}`)).then(r => r.json()).catch(() => null);
+  if (when === 'now' && document.getElementById('awUpdate')) return u;
+  if (!u?.available || (when !== 'now' && !u.preview && later.get() === u.latest) || document.getElementById('awUpdate')) return u;
   const box = el('div', 'aw-update'); box.id = 'awUpdate'; box.setAttribute('role', 'status');
   box.append(el('b', '', `A new version is ready (${u.latest}).`));
   if (u.notes?.length) { box.append(el('span', '', " What's new:")); const ul = el('ul'); for (const n of u.notes) ul.append(el('li', '', n)); box.append(ul); }
@@ -27,6 +28,15 @@ async function show() {
     }, 2000);
   };
   row.append(go, no); box.append(row, msg); document.body.append(box);
+  return u;
+}
+
+/** "Check for updates" in the sidebar: look right away, then show the box or say you are up to date. */
+export async function checkNow() {
+  const u = await show('now');
+  if (!u) alert('Could not check for updates. Is Agents World still running?');
+  else if (u.enabled === false) alert('Update checks are turned off ("updates": {"check": false} in data/config.json).');
+  else if (!u.available) alert(u.latest ? `You're on the newest version (${u.current}).` : `You have version ${u.current}. GitHub could not be reached, so I could not check.`);
 }
 
 if (isTop) {
@@ -34,5 +44,5 @@ if (isTop) {
 .aw-update ul{margin:6px 0 8px;padding-left:18px}.aw-row{display:flex;gap:8px;margin-top:6px}.aw-update button{border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer;border:1px solid #44444d;background:#2c2c33;color:#e8e8ee}
 .aw-update .aw-go{background:#e8e8ee;color:#151518;border-color:#e8e8ee;font-weight:600}.aw-update button:disabled{opacity:.6}.aw-msg{margin:6px 0 0;color:#a8a8b2}.aw-msg:empty{display:none}`;
   document.head.append(css);
-  show(); setInterval(show, 3600_000);
+  show(); setInterval(() => show(), 3600_000);
 }

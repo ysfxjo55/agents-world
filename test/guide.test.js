@@ -307,3 +307,15 @@ test('?preview-update shows a pretend 9.9.9 with this copy\'s changelog lines, a
   assert.deepEqual([p.preview, p.available, p.latest, p.notes], [true, true, '9.9.9', ['new panel', 'updates']]);
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+test('update checks are throttled: a page opening twice in 10 minutes asks GitHub once', async () => {
+  const { createUpdater } = await import('../server/updater.js');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-thr-')); fs.writeFileSync(path.join(root, 'package.json'), '{"version":"0.2.2"}');
+  let asked = 0; const fake = async (url) => { if (url.endsWith('package.json')) asked++; return url.endsWith('package.json') ? { ok: true, json: async () => ({ version: '0.2.2' }) } : { ok: false }; };
+  const u = createUpdater({ root, doFetch: /** @type {any} */ (fake), log: () => {} });
+  await u.check({ minAgeMs: 600_000 }); await u.check({ minAgeMs: 600_000 });
+  assert.equal(asked, 1);
+  await u.check(); assert.equal(asked, 2);                       // the hourly check always asks
+  assert.equal(u.state.available, false);                         // same version: "You're on the newest version"
+  fs.rmSync(root, { recursive: true, force: true });
+});

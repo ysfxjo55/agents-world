@@ -69,7 +69,7 @@ const family = new FamilyChat({ runs });
 // Updates: look on GitHub at start and every 6 hours. After an install the server exits with RESTART_CODE and server/start.js starts the new code.
 const updater = createUpdater({ settings: config.updates, busy: () => runs.size > 0,
   onInstalled: () => setTimeout(() => { for (const c of clients) c.end(); process.exit(RESTART_CODE); }, 500) });   // after the page got its answer
-setTimeout(() => updater.check(), 5000).unref(); setInterval(() => updater.check(), 6 * 3600_000).unref();
+setTimeout(() => updater.check(), 5000).unref(); setInterval(() => updater.check(), 3600_000).unref();   // at start, then every hour
 
 /* ---------- live snapshot ---------- */
 const notifier = makeNotifier(config.notify);
@@ -195,7 +195,10 @@ async function handle(req, res) {
     if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
     return json(res, 200, { ...readAll(), shown: { bella: agentShown('bella'), interstellar: agentShown('interstellar') } });
   }
-  if (p === '/api/update' && !write) return json(res, 200, { ...(url.searchParams.has('preview') && !auth.remote ? previewState(updater.state) : updater.state), supervised: !!process.env.AGENT_WORLD_SUPERVISED });   // "Check again" in the guide
+  if (p === '/api/update' && !write) {
+    if (url.searchParams.has('check')) await updater.check({ minAgeMs: url.searchParams.get('check') === 'now' ? 60_000 : 600_000 });   // page opened: at most every 10 min; "Check for updates": at most every minute
+    return json(res, 200, { ...(url.searchParams.has('preview') && !auth.remote ? previewState(updater.state) : updater.state), supervised: !!process.env.AGENT_WORLD_SUPERVISED });
+  }   // "Check again" in the guide
   if (await familyInboxRoute({ req, res, p, auth, json, body, dir: process.env.AGENT_WORLD_FAMILY_DIR || path.join(ROOT, 'data', 'family'), logAction })) return;
   fresh();
   if (await researchRoutes({ req, res, p, write, auth, json, body })) return;
