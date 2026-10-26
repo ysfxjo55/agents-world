@@ -22,7 +22,7 @@ import { claudeProcessPattern, sessionBusy, liveRuns } from './runs.js';
 import { config, saveName, saveSettings } from './config.js';
 import { detectEngines, engineSummary, setEngines, currentEngines } from './engines.js';
 import { checkRequest, originAllowed, HttpError, safeDecode, ownTailnetIps } from './auth.js';
-import { body, rawBody, resolveCwd, isTodayChat, refreshUserPath } from './util.js';
+import { body, rawBody, resolveCwd, isTodayChat, refreshUserPath, inlineScriptHashes } from './util.js';
 import { resolveDownload } from './files.js';
 import { saveAny, uploadPath, cleanUploads } from './uploads.js';
 import { researchRoutes, resumeOrphans } from './research-api.js';
@@ -153,7 +153,7 @@ function serveFile(res, base, rel) {
     if (err) return json(res, 404, { error: 'not found' });
     const ext = path.extname(file), headers = { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
     if (ext === '.html') {
-      const hashes = [...data.toString().matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(x => `'sha256-${crypto.createHash('sha256').update(x[1]).digest('base64')}'`).join(' ');
+      const hashes = inlineScriptHashes(data.toString());
       headers['Content-Security-Policy'] = csp(hashes);
     }
     res.writeHead(200, headers); res.end(data);

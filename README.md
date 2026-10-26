@@ -53,6 +53,8 @@ Then open http://localhost:4321. Or double-click **Agents World.cmd**.
 
 The app only listens on 127.0.0.1, so other computers on your network cannot reach it.
 
+**The page is blank or stays on "connecting".** Press F12, open the Console tab and read the red lines. "Failed to resolve module specifier three" or a Content Security Policy error: update Agents World (fixed for Windows line endings). "not connected": check that the Agents World window is still open and shows no error, then reload; with Brave, try Shields off for localhost. If the 3D view cannot start (no WebGL), the page says so and everything else still works.
+
 To use another port: `AGENTS_WORLD_PORT=4400 npm start`. (Settings that start with the old name `AGENT_WORLD_` still work.)
 
 ### First steps guide

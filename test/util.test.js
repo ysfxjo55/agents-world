@@ -75,3 +75,11 @@ test('new AGENTS_WORLD_* setting names work, and an old AGENT_WORLD_* name that 
   assert.equal(env.AGENT_WORLD_PORT, '4400');
   assert.equal(env.AGENT_WORLD_HOSTS, 'old');
 });
+
+test('CSP hash of an inline script is the same for a page with Windows (CRLF) line ends', async () => {
+  const { inlineScriptHashes } = await import('../server/util.js');
+  const lf = '<script type="importmap">\n{ "imports": {} }\n</script><script src="x.js"></script>';
+  const want = `'sha256-${(await import('node:crypto')).createHash('sha256').update('\n{ "imports": {} }\n').digest('base64')}'`;
+  assert.equal(inlineScriptHashes(lf), want);
+  assert.equal(inlineScriptHashes(lf.replace(/\n/g, '\r\n')), want);   // what the browser hashes after it turns CRLF into LF
+});

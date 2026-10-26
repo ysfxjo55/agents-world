@@ -2,6 +2,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { HttpError } from './auth.js';
 
 // Picks the folder a chat may start in: an empty request means home; a requested folder must be a folder
@@ -93,4 +94,11 @@ export function resolveBin(cmd, args, { platform = process.platform, env = proce
     if (m) return { cmd: process.execPath, args: [path.win32.join(d, m[1]), ...args] };
   }
   return { cmd, args };
+}
+
+// The CSP hashes for a page's inline scripts (the import map). Browsers turn CRLF line ends into LF before they hash,
+// and Git on Windows checks files out with CRLF, so we hash the LF text too, or the page breaks on Windows.
+export function inlineScriptHashes(html) {
+  return [...html.replace(/\r\n?/g, '\n').matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+    .map(x => `'sha256-${crypto.createHash('sha256').update(x[1]).digest('base64')}'`).join(' ');
 }
