@@ -19,5 +19,5 @@ export function codexPersonaPrompt(text, agent, sessionId) {
 }
 
 export function stripPersona(text) {
-  return text.replace(/^\[Family instructions\]\n[\s\S]*?\n\[\/Family instructions\]\n\n/, '');
+  return text.replace(/^\[(Family|Bella) instructions\]\n[\s\S]*?\n\[\/\1 instructions\]\n\n/, '');
 }

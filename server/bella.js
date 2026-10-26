@@ -5,7 +5,7 @@ import { setAlias } from './store.js';
 
 // Bella has ONE ongoing conversation (a real Claude Code session run with her agent), plus older conversations that
 // are shown above it as read-only history (for example the Terminal session where she was built).
-//   data/bella/state.json = { "mainSession": "<claude session id> | null", "history": ["claude:<id>", ...] }
+//   data/bella/state.json = { "mainSession": "<claude session id> | <tool>:<id> | null", "history": ["claude:<id>", ...] }
 const FILE = process.env.AGENT_WORLD_BELLA_STATE || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'bella', 'state.json');
 
 export function loadBella() {
@@ -30,10 +30,13 @@ export function logAction(entry) {
   try { fs.mkdirSync(path.dirname(DELEG), { recursive: true }); fs.appendFileSync(path.join(path.dirname(DELEG), 'actions.log'), JSON.stringify({ ts: new Date().toISOString(), ...entry }) + '\n'); } catch { /* logging must never break a request */ }
 }
 
-// Remember the first Bella session as her main thread (or replace it if the old one was deleted).
-export function recordMain(sessionId, exists) {
+// The key of her main thread. Older files store a bare Claude id; a Codex thread is stored with its "codex:" prefix.
+export const bellaMainKey = (s) => (!s.mainSession ? null : s.mainSession.includes(':') ? s.mainSession : `claude:${s.mainSession}`);
+
+// Remember the first Bella session as her main thread (or replace it if the old one was deleted). key = "claude:<id>" or "codex:<id>".
+export function recordMain(key, exists) {
   const s = loadBella();
-  if (s.mainSession && exists(`claude:${s.mainSession}`)) return false;
-  s.mainSession = sessionId; save(s); setAlias(`claude:${sessionId}`, 'Bella');
+  if (s.mainSession && exists(bellaMainKey(s))) return false;
+  s.mainSession = key.startsWith('claude:') ? key.slice(7) : key; save(s); setAlias(key, 'Bella');
   return true;
 }

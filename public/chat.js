@@ -15,7 +15,9 @@ const S = {
   snap: null, key: null, msgs: [], runs: new Map(), q: '', showOld: ls.get('aw.showOld', '0') === '1',
   attach: [], remote: false, bella: false, bellaMain: null, histEl: null, histCount: 0,
   mode: ls.get('aw.mode', 'readonly'), tool: ls.get('aw.newtool', 'claude'), dir: '', agent: '', loadSeq: 0, lastAct: 0,
+  eng: { bella: 'claude', interstellar: 'codex' },   // which program each manager runs on (from the server: with one engine, both use it)
 };
+const engOf = (agent) => (agent === 'bella' || agent === 'interstellar' ? S.eng[agent] : 'claude');
 if (!MODES[S.mode] || S.mode === 'full' || S.mode === 'build') S.mode = 'readonly';   // powerful modes are never remembered: pick them again each visit
 
 import { md } from './md.js';
@@ -35,7 +37,8 @@ S.view = 'chats'; S.sel = null; S.trash = [];
 function visibleSessions() {
   if (!S.snap) return [];
   const now = Date.now(), q = S.q.toLowerCase();
-  return S.snap.sessions.filter(s => !s.familyChat && (S.showOld || (!s.archived && now - s.lastActivity < 14 * 86400000)) &&
+  const since = S.snap.showSince || 0;   // "start with an empty world": older sessions wait behind "Show older & archived"
+  return S.snap.sessions.filter(s => !s.familyChat && (S.showOld || (!s.archived && now - s.lastActivity < 14 * 86400000 && s.lastActivity >= since)) &&
     (!q || s.title.toLowerCase().includes(q) || (s.projectName || '').toLowerCase().includes(q)));
 }
 async function loadTrash() { S.trash = (await fetch('/api/trash').then(r => r.json()).catch(() => ({ items: [] }))).items; $('trashN').textContent = S.trash.length ? S.trash.length : ''; if (S.view === 'trash') renderSide(); }
@@ -138,7 +141,7 @@ $('mode').onchange = (e) => {
   if (e.target.value === 'full' && !confirm('Full access lets the AI run any command and change any file on your computer without asking.\n\nOnly use it for work you trust. Continue?')) { e.target.value = S.mode; return; }
   S.mode = e.target.value; ls.set('aw.mode', S.mode); e.target.className = S.mode === 'full' || S.mode === 'build' ? 'full' : '';
 };
-$('agentSel').onchange = (e) => { const agent = e.target.value; if (S.key && agent && (agent === 'interstellar' || find(S.key)?.tool !== 'claude')) { newChat(agent); return; } S.agent = agent; if (agent && !S.key) { S.tool = agent === 'interstellar' ? 'codex' : 'claude'; ls.set('aw.newtool', S.tool); } renderThread(); renderTop(); };
+$('agentSel').onchange = (e) => { const agent = e.target.value; if (S.key && agent && (agent === 'interstellar' || find(S.key)?.tool !== engOf(agent))) { newChat(agent); return; } S.agent = agent; if (agent && !S.key) { S.tool = engOf(agent); ls.set('aw.newtool', S.tool); } renderThread(); renderTop(); };
 
 /* ---------- thread ---------- */
 function toolEl(b) {
@@ -184,7 +187,7 @@ function renderThread() {
     const h = el('div', ''); h.id = 'hero';
     h.append(el('h1', '', 'What are we working on?'), el('p', '', 'Start a new session with Claude Code, OpenCode or Codex, or pick an old one on the left.'));
     const ctl = el('div', 'ctl'), seg = el('div', 'chipsel');
-    for (const [k, v] of Object.entries(TOOLS)) { const b = el('button', S.tool === k ? 'on' : '', v); b.onclick = () => { S.tool = k; ls.set('aw.newtool', k); if (S.agent && (S.agent === 'interstellar' ? k !== 'codex' : k !== 'claude')) { S.agent = ''; $('agentSel').value = ''; } renderThread(); renderTop(); }; seg.append(b); }
+    for (const [k, v] of Object.entries(TOOLS)) { const b = el('button', S.tool === k ? 'on' : '', v); b.onclick = () => { S.tool = k; ls.set('aw.newtool', k); if (S.agent && k !== engOf(S.agent)) { S.agent = ''; $('agentSel').value = ''; } renderThread(); renderTop(); }; seg.append(b); }
     const dir = document.createElement('select'); dir.title = 'Project folder'; dir.append(new Option('~ Home', ''));
     for (const p of S.snap?.projects || []) dir.append(new Option(p.name, p.path));
     dir.disabled = S.agent === 'interstellar'; if (dir.disabled) { dir.replaceChildren(new Option('Interstellar folder', '')); dir.title = 'Interstellar uses its own folder'; }
@@ -221,7 +224,7 @@ function openSession(key, opts = {}) {
 }
 function newChat(agent) {
   S.bella = false;
-  if (agent) { S.tool = agent === 'interstellar' ? 'codex' : 'claude'; ls.set('aw.newtool', S.tool); }
+  if (agent) { S.tool = engOf(agent); ls.set('aw.newtool', S.tool); }
   S.key = null; S.msgs = []; S.agent = agent || ''; $('agentSel').value = S.agent; history.replaceState(null, '', location.pathname);
   renderSide(); renderTop(); renderThread(); $('input').focus();
 }
@@ -349,14 +352,18 @@ let avWatch = 0;
 const watchApp = () => { clearTimeout(avWatch); avWatch = setTimeout(() => { if ($('appview').hidden || $('avFail')) return; const m = el('div', 'avfail', 'This page did not load. '); m.id = 'avFail'; const r = el('button', 'ibtn', 'Reload'); r.type = 'button'; r.onclick = () => { m.remove(); $('avFrame').src = $('avFrame').dataset.url; watchApp(); }; m.append(r); $('appview').append(m); }, 6000); };
 new MutationObserver(watchApp).observe($('avFrame'), { attributes: true, attributeFilter: ['src'] });
 
-fetch('/api/config').then(r => r.json()).then(cfg => { if (cfg.remote) { S.remote = true; S.mode = 'readonly'; fillSelects(); renderTop(); } const box = $('linksList'); for (const l of cfg.links || []) { const b = el('button', ''); b.innerHTML = `<span class="ic">${icon(l.icon === 'chess' ? 'chess' : 'link', 17)}</span>`; b.append(l.name); const ch = el('span', 'chev', '↗'); b.append(ch); b.onclick = () => window.open(l.url, '_blank', 'noopener'); box.append(b); } }).catch(() => {});
+fetch('/api/config').then(r => r.json()).then(cfg => {
+  const e = cfg.engines || {}; for (const a of ['bella', 'interstellar']) if (e[a]) S.eng[a] = e[a];
+  if (e.found && !e.found[S.tool]?.installed) { const t = ['claude', 'codex', 'opencode'].find(x => e.found[x]?.installed); if (t) { S.tool = t; if (!S.key) renderThread(); } }   // a new chat starts on a program you have
+  $('todayBtn').hidden = !cfg.today;
+  if (cfg.remote) { S.remote = true; S.mode = 'readonly'; fillSelects(); renderTop(); } const box = $('linksList'); for (const l of cfg.links || []) { const b = el('button', ''); b.innerHTML = `<span class="ic">${icon(l.icon === 'chess' ? 'chess' : 'link', 17)}</span>`; b.append(l.name); const ch = el('span', 'chev', '↗'); b.append(ch); b.onclick = () => window.open(l.url, '_blank', 'noopener'); box.append(b); } }).catch(() => {});
 
 for (const [id, ic] of Object.entries({ bellaBtn: 'crown', newBtn: 'new', agentsBtn: 'guild', todayBtn: 'clock', researchBtn: 'research', usageBtn: 'usage', selectBtn: 'select', trashBtn: 'trash' })) { const s = $(id)?.querySelector('.ic'); if (s) s.innerHTML = icon(ic, 17); }
 
 // Bella's one ongoing thread: her own session, with the older Terminal conversation shown above it (read-only)
 async function openBella() {
   const t = await fetch('/api/bella/thread').then(r => r.json()).catch(() => ({}));
-  S.bellaMain = t.mainKey || null; S.tool = 'claude'; S.agent = 'bella'; $('agentSel').value = 'bella';
+  S.bellaMain = t.mainKey || null; S.tool = S.eng.bella; S.agent = 'bella'; $('agentSel').value = 'bella';
   loadHistory(t.history || []);
   if (S.bellaMain) openSession(S.bellaMain, { bella: true });
   else { S.bella = true; S.key = null; S.msgs = []; history.replaceState(null, '', location.pathname); renderSide(); renderTop(); renderThread(); $('input').focus(); }

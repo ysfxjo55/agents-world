@@ -8,6 +8,13 @@ const FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data
 let file = {};
 try { file = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch { /* no config yet: local-only defaults */ }
 
+/** "now", an ISO date or a number of ms -> ms; 0 = show everything; null = not chosen yet. */
+export function parseSince(v, now = Date.now()) {
+  if (v === undefined || v === null || v === '') return null;
+  if (v === 'now') return now;
+  const n = typeof v === 'number' ? v : /^\d+$/.test(String(v)) ? Number(v) : Date.parse(String(v));
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
 const list = (v) => (Array.isArray(v) ? v : String(v ?? '').split(',')).map(s => String(s).trim()).filter(Boolean);
 const text = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 export const config = {
@@ -21,6 +28,9 @@ export const config = {
     ntfy: /^https:\/\/[^\s]+$/.test(file.notify?.ntfy ?? '') ? file.notify.ntfy : '',   // phone push via an ntfy topic URL; off when empty
   },
   links: Array.isArray(file.links) ? file.links.filter(l => l && /^https:\/\//.test(l.url) && l.name).slice(0, 8) : [],
+  showSince: parseSince(process.env.AGENT_WORLD_SHOW_SINCE ?? file.showSince),   // "start fresh": hide sessions not active since then. null = never chosen, 0 = show all
+  today: process.env.AGENT_WORLD_TODAY ? process.env.AGENT_WORLD_TODAY === '1' : file.today === true,   // the Today page and its daily popup; off unless you turn it on
+  agents: file.agents && typeof file.agents === 'object' ? file.agents : {},   // which engine each manager uses, e.g. {"interstellar": {"engine": "claude"}}
 };
 
 /** Your name in agent prompts ("the user" until you set "name" in data/config.json). */
@@ -29,21 +39,30 @@ export const USER = config.name || 'the user';
 export const userLabel = () => config.name || 'You';
 
 /**
- * Save your first name (from the first-steps guide) into data/config.json, keeping every other setting.
- * Returns the cleaned name, or null when it is empty or too long. The agents' prompts pick it up after a restart.
+ * Change a few settings in data/config.json, keeping every other one. Writes a temp file first, so a crash never leaves half a file.
+ * @param {Record<string, unknown>} patch
+ * @param {string} [file]
+ */
+export function saveSettings(patch, file = FILE) {
+  let cur = {};
+  try { cur = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* no config yet */ }
+  if (!cur || typeof cur !== 'object' || Array.isArray(cur)) cur = {};
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = file + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify({ ...cur, ...patch }, null, 2) + '\n');
+  fs.renameSync(tmp, file);
+  if (file === FILE) Object.assign(config, patch);
+}
+
+/**
+ * Save your first name (from the first-steps guide). Returns the cleaned name, or null when it is empty or too long.
+ * The agents' prompts pick it up after a restart.
  * @param {unknown} name
  * @param {string} [file]
  */
 export function saveName(name, file = FILE) {
   const clean = typeof name === 'string' ? [...name].filter(c => c >= ' ' && c !== '\u007f').join('').trim() : '';
   if (!clean || clean.length > 40) return null;
-  let cur = {};
-  try { cur = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* no config yet */ }
-  if (!cur || typeof cur !== 'object' || Array.isArray(cur)) cur = {};
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify({ ...cur, name: clean }, null, 2) + '\n');
-  fs.renameSync(tmp, file);
-  if (file === FILE) config.name = clean;
+  saveSettings({ name: clean }, file);
   return clean;
 }

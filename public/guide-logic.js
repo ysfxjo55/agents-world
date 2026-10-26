@@ -7,19 +7,18 @@ export const KEY = 'aw.guide';
 // target: the real element to highlight (a CSS selector), or null for a card in the middle.
 // accepts(ev, state): true when this event finishes the step.
 export const STEPS = [
-  { id: 'welcome', page: 'any', target: null, action: 'Start the tour',
+  { id: 'welcome', page: 'any', target: null, action: 'Start the tour', choice: 'start',
     title: 'Welcome to Agent World',
     text: 'See all your AI sessions in one place, and get told the moment one finishes. This short tour shows you how, one step at a time. You do each step yourself.',
     accepts: (ev) => ev.type === 'next' },
+  { id: 'connect', page: 'any', target: null, engines: true,
+    title: 'Connect your AI',
+    text: 'Agent World has no AI account of its own. It runs Claude Code or Codex on this computer, logged in with your own subscription. One is enough. It never asks for your password or keys.',
+    accepts: (ev) => ev.type === 'engine-ok' },
   { id: 'name', page: 'any', target: null, input: 'name',
     title: 'What should the agents call you?',
     text: 'Type your first name. It is saved on this computer only, in data/config.json. The agents use it after the app restarts.',
     accepts: (ev) => ev.type === 'name-saved' },
-  { id: 'world', page: 'world', target: '#world',
-    title: 'Your world',
-    text: 'Each project folder is an island, and each session is a building on it. The robot works, waits or sleeps, like your agent. Click a building (or a row in the list) to see that session.',
-    empty: 'You have no sessions yet. That is fine: you will make one in the next step.',
-    accepts: (ev) => ev.type === 'selected' && !!ev.session },
   { id: 'chat', page: 'chat', target: '.composer',
     title: 'Start an agent',
     text: 'This is a new chat. Keep the access mode on "Read-only" (top right), type a tiny task like "say hello", and send it.',
@@ -34,22 +33,43 @@ export const STEPS = [
     text: 'This menu decides what the agent may do on your computer. Read-only: it can look, never change your files. Can edit files: it can also create and edit files. Can build and test: it can also run git, npm and node. Full access: it can run any command and change anything, without asking.',
     warn: 'Only give more access for work you trust, and check what the agent did. Strong modes are never remembered: you pick them again each visit. Click the menu to see the levels.',
     accepts: (ev) => ev.type === 'mode-opened' },
+  { id: 'world', page: 'world', target: '#world',
+    title: 'Your world',
+    text: 'Each project folder is an island, and each session is a building on it. The robot works, waits or sleeps, like your agent. Your "say hello" task is a building now: click it (or its row in the list).',
+    empty: 'No sessions are shown yet. If you started with an empty world, sessions appear here as soon as you start one.',
+    accepts: (ev) => ev.type === 'selected' && !!ev.session },
   { id: 'done', page: 'any', target: '#guideBtn', action: 'Finish',
     title: 'You are ready',
     text: 'That is the whole loop: start agents, watch them in the world, get told when they finish. Open this guide again any time with the "Guide" button.',
     accepts: (ev) => ev.type === 'next' },
 ];
 
+// How to get each engine, from the official docs (checked October 2026). Shown with Copy buttons; you run them yourself in a terminal.
+export const ENGINES = {
+  claude: { name: 'Claude Code', plan: 'a Claude Pro or Max plan (the free plan does not include Claude Code)', docs: 'https://code.claude.com/docs/en/setup',
+    install: { mac: 'curl -fsSL https://claude.ai/install.sh | bash', win: 'irm https://claude.ai/install.ps1 | iex' },
+    login: 'claude', loginHow: 'Run it, then log in with your Claude account in the browser window that opens. Type /exit when done.' },
+  codex: { name: 'Codex', plan: 'a ChatGPT Plus or Pro plan', docs: 'https://github.com/openai/codex',
+    install: { mac: 'npm install -g @openai/codex', win: 'npm install -g @openai/codex' },
+    login: 'codex', loginHow: 'Run it and choose "Sign in with ChatGPT". Close it when you are logged in.' },
+  opencode: { name: 'OpenCode', plan: 'an OpenCode account or another provider', docs: 'https://opencode.ai/docs/',
+    install: { mac: 'curl -fsSL https://opencode.ai/install | bash', win: 'npm install -g opencode-ai' },
+    login: 'opencode', loginHow: 'Run it, type /connect and follow the steps. Optional: Bella and Interstellar need Claude Code or Codex.' },
+};
+
+/** Does at least one engine work (installed and logged in)? Bella and Interstellar need Claude Code or Codex; OpenCode alone runs plain chats. */
+export const engineWorks = (found = {}) => Object.values(found).some(e => e && e.installed && e.loggedIn !== false);
+
 /** A fresh guide, open at the first step. */
-export const fresh = () => ({ v: 1, status: 'active', step: 0, runKey: null });
+export const fresh = () => ({ v: 2, status: 'active', step: 0, runKey: null });
 
 /** Read saved progress. Nothing saved yet (a first visit) means a fresh, open guide. Broken data also starts fresh. */
 export function load(raw) {
   if (raw == null) return fresh();
   try {
     const s = JSON.parse(raw);
-    if (!s || s.v !== 1 || !['active', 'closed', 'done'].includes(s.status) || !Number.isInteger(s.step) || s.step < 0 || s.step >= STEPS.length) return fresh();
-    return { v: 1, status: s.status, step: s.step, runKey: typeof s.runKey === 'string' ? s.runKey : null };
+    if (!s || s.v !== 2 || !['active', 'closed', 'done'].includes(s.status) || !Number.isInteger(s.step) || s.step < 0 || s.step >= STEPS.length) return fresh();
+    return { v: 2, status: s.status, step: s.step, runKey: typeof s.runKey === 'string' ? s.runKey : null };
   } catch { return fresh(); }
 }
 export const save = (s) => JSON.stringify(s);

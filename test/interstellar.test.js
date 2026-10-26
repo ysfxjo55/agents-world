@@ -7,12 +7,13 @@ import { parseRuns } from '../server/runs.js';
 
 const session = (id, cwd = INTERSTELLAR_DIR, tool = 'codex') => ({ id, key: `${tool}:${id}`, tool, cwd, lastActivity: 1000, status: 'working' });
 
-test('Interstellar belongs only to Codex sessions in its exact fixed folder', () => {
+test('Interstellar owns the Codex or Claude Code sessions in its exact fixed folder', () => {
   assert.equal(isInterstellarSession(session('own')), true);
   assert.equal(isInterstellarSession(session('normalized', path.join(INTERSTELLAR_DIR, '.'))), true);
   assert.equal(isInterstellarSession(session('child', path.join(INTERSTELLAR_DIR, 'child'))), false);
   assert.equal(isInterstellarSession(session('other', '/other/project')), false);
-  assert.equal(isInterstellarSession(session('claude', INTERSTELLAR_DIR, 'claude')), false);
+  assert.equal(isInterstellarSession(session('claude', INTERSTELLAR_DIR, 'claude')), true);       // Interstellar on Claude Code (no Codex installed)
+  assert.equal(isInterstellarSession(session('oc', INTERSTELLAR_DIR, 'opencode')), false);
 });
 
 test('Interstellar status follows its live Codex run, including silent thinking and stopping', () => {
@@ -30,12 +31,12 @@ test('snapshot groups partner sessions and keeps other tools and projects in pla
   try {
     for (const src of Object.values(SOURCES)) src.list = () => [];
     SOURCES.codex.list = () => [session('own'), session('other', '/other/project')];
-    SOURCES.claude.list = () => [session('claude', INTERSTELLAR_DIR, 'claude')];
+    SOURCES.claude.list = () => [session('claude', '/claude/project', 'claude')];
     const snap = buildSnapshot(2000);
     assert.equal(snap.interstellar.displayName, 'Interstellar');
     assert.equal(snap.sessions.find(s => s.id === 'own').projectPath, '__interstellar__');
     assert.equal(snap.sessions.find(s => s.id === 'other').projectPath, '/other/project');
-    assert.equal(snap.sessions.find(s => s.id === 'claude').projectPath, INTERSTELLAR_DIR);
+    assert.equal(snap.sessions.find(s => s.id === 'claude').projectPath, '/claude/project');
     assert.ok(snap.projects.some(p => p.path === '__interstellar__' && p.name === 'Interstellar'));
     assert.ok(!snap.agents.some(a => a.name === 'interstellar'));
   } finally { for (const [k, list] of Object.entries(original)) SOURCES[k].list = list; }

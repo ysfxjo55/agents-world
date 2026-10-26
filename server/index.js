@@ -18,7 +18,8 @@ import { FamilyChat } from './family.js';
 import { startRun, MODES, INTERSTELLAR_DIR, chatAccessError, maxModeForToken } from './chat.js';
 import { trashSession, listTrash, restoreSession, emptyTrash } from './trash.js';
 import { claudeProcessPattern, sessionBusy, liveRuns } from './runs.js';
-import { config, saveName } from './config.js';
+import { config, saveName, saveSettings } from './config.js';
+import { detectEngines, engineSummary, setEngines, currentEngines } from './engines.js';
 import { checkRequest, originAllowed, HttpError, safeDecode, ownTailnetIps } from './auth.js';
 import { body, rawBody, resolveCwd, isTodayChat } from './util.js';
 import { resolveDownload } from './files.js';
@@ -26,7 +27,7 @@ import { saveAny, uploadPath, cleanUploads } from './uploads.js';
 import { researchRoutes, resumeOrphans } from './research-api.js';
 import { installAgents } from './research.js';
 import { installStarter } from './starter.js';
-import { loadBella, recordMain, logAction } from './bella.js';
+import { loadBella, recordMain, logAction, bellaMainKey } from './bella.js';
 import { createProject, loadCreated } from './newproject.js';
 import { allowedDelegation, startJob, getJob, listJobs, resolveResume, ensureWorktree, canTrash } from './delegate.js';
 import { autoOpen, localDateString } from './autoopen.js';
@@ -49,6 +50,10 @@ if (process.argv.includes('--test-notify')) {             // npm run test-notify
   else console.log('sent:', await n({ title: 'Agent World', message: 'Finished: this is a test alert' }));
   process.exit(0);
 }
+
+// Which AI programs are installed and logged in. Looked up at start and again when the guide asks ("Check again").
+const refreshEngines = () => setEngines(engineSummary(detectEngines(), config.agents));
+refreshEngines();
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml' };
 // Our own pages only: the Life board pages (proxied) load fonts/libraries from the web, so they do not get this policy.
@@ -175,7 +180,8 @@ async function handle(req, res) {
     clients.add(res); req.on('close', () => clients.delete(res)); return;
   }
   if (p === '/api/snapshot') { fresh(); return json(res, 200, snapshot); }
-  if (p === '/api/config') return json(res, 200, { links: config.links, remote: auth.remote, lifeDir: LIFE_DIR, name: config.name });
+  if (p === '/api/config') return json(res, 200, { links: config.links, remote: auth.remote, lifeDir: LIFE_DIR, name: config.name, today: config.today, startChosen: config.showSince !== null, engines: currentEngines() });
+  if (p === '/api/engines' && !write) return json(res, 200, refreshEngines());   // "Check again" in the guide
   if (await familyInboxRoute({ req, res, p, auth, json, body, dir: process.env.AGENT_WORLD_FAMILY_DIR || path.join(ROOT, 'data', 'family'), logAction })) return;
   fresh();
   if (await researchRoutes({ req, res, p, write, auth, json, body })) return;
@@ -196,7 +202,7 @@ async function handle(req, res) {
     return json(res, 200, { messages: family.history(Number(url.searchParams.get('limit'))), busy: !!family.active });
   }
   if (p === '/api/bella/thread' && !write) {
-    const st = loadBella(), mainKey = st.mainSession ? `claude:${st.mainSession}` : null;
+    const st = loadBella(), mainKey = bellaMainKey(st);
     return json(res, 200, { mainKey: mainKey && find(mainKey) ? mainKey : null, history: st.history.filter(k => find(k)) });
   }
   if (p === '/api/file' && !write) {                                 // hand a finished file back to you (Downloads / Desktop / Documents only)
@@ -230,6 +236,11 @@ async function handle(req, res) {
       const name = saveName((await body(req))?.name);
       return name ? json(res, 200, { ok: true, name }) : json(res, 400, { error: 'Type a name of 1 to 40 letters.' });
     }
+    if (p === '/api/settings/start') {                                 // the guide's first step: an empty world, or your existing sessions
+      if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
+      saveSettings({ showSince: (await body(req))?.fresh === true ? Date.now() : 0 }); invalidate();
+      return json(res, 200, { ok: true, showSince: config.showSince });
+    }
     if (p === '/api/notify/test') {                                    // the first-steps guide: "Send a test alert"
       if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
       if (!notifier) return json(res, 200, { ok: false, error: 'Alerts are off in data/config.json ("notify").' });
@@ -258,7 +269,7 @@ async function handle(req, res) {
         const r = await restoreSession(String(b.id || '')); logAction({ action: 'restore', id: b.id, ok: r.ok, maxMode }); invalidate(); return json(res, 200, r);
       }
       const st = loadBella(), keys = Array.isArray(b.keys) ? b.keys.map(String) : [];
-      const protectedKeys = [...st.history, ...(st.mainSession ? [`claude:${st.mainSession}`] : [])];
+      const protectedKeys = [...st.history, ...(st.mainSession ? [bellaMainKey(st)] : [])];
       const gate = canTrash(keys, { maxMode, protectedKeys }); if (!gate.ok) return json(res, 403, { error: gate.error });
       const results = await trashMany(keys);
       logAction({ action: 'trash', reason: String(b.reason || '').slice(0, 200), maxMode, results: results.map(x => ({ key: x.key, title: x.title, ok: x.ok, error: x.error })) });
@@ -419,7 +430,7 @@ async function chatSend(req, res, auth) {
   let agent = null;
   if (b.agent === 'interstellar') agent = 'interstellar';
   else if (b.agent) { agent = findAgent(b.agent)?.name; if (!agent || !SAFE_ID.test(agent)) return json(res, 400, { error: 'unknown agent' }); }
-  if (tool === 'codex' && path.resolve(cwd) === path.resolve(INTERSTELLAR_DIR)) agent = 'interstellar';
+  if (tool === currentEngines().interstellar && path.resolve(cwd) === path.resolve(INTERSTELLAR_DIR)) agent = 'interstellar';
   if (b.key && sessionBusy(runs, b.key)) return json(res, 409, { error: 'This session is already answering.' });
   if (runs.size >= 3) return json(res, 429, { error: 'Three things are already running (chats, agents Bella started, or the family chat). Wait for one to finish.' });
   const images = (Array.isArray(b.images) ? b.images.slice(0, 4) : []).map(uploadPath);
@@ -431,7 +442,7 @@ async function chatSend(req, res, auth) {
   res.write(`data: ${JSON.stringify({ t: 'accepted', runId })}\n\n`);   // so Stop works even before the agent says anything (OpenCode can take 90 s to start)
   const emit = (ev) => {
     if (temp && ev.t === 'start') tempKey = ev.key; if (temp && ev.t === 'done') tempOk = !!ev.ok;
-    if (ev.t === 'start' && agent === 'bella' && !b.key) { try { recordMain(ev.sessionId, (k) => !!find(k)); } catch (e) { console.error('bella state:', e.message); } }   // her first chat becomes her main thread
+    if (ev.t === 'start' && agent === 'bella' && !b.key) { try { recordMain(ev.key, (k) => !!find(k)); } catch (e) { console.error('bella state:', e.message); } }   // her first chat becomes her main thread
     if (open && !res.writableEnded) res.write(`data: ${JSON.stringify({ ...ev, runId })}\n\n`);
   };
   res.on('close', () => { open = false; });   // closing the page does NOT kill the agent; it finishes in the background
@@ -453,7 +464,7 @@ server.listen(PORT, HOST, () => {
   console.log(`Agent World running at http://localhost:${PORT}`);
   // At login, open the Today page once a day (macOS only). Wait a moment so the page has a server to talk to.
   const delay = Number(process.env.AGENT_WORLD_AUTOOPEN_DELAY_MS) || 10000;
-  setTimeout(() => autoOpen({
+  if (config.today) setTimeout(() => autoOpen({   // the Today page is an opt-in extra ("today": true in data/config.json)
     url: `http://localhost:${PORT}/today.html?popup=1`,
     stateFile: process.env.AGENT_WORLD_TODAY_STATE || path.join(ROOT, 'data', 'today-opened.json'),
     today: localDateString(),

@@ -37,7 +37,11 @@ addEventListener('message', (e) => {
 });
 
 function guideRunning() { try { return guideOpen(loadGuide(localStorage.getItem(GUIDE_KEY))); } catch { return false; } }   // one popup at a time: the first-steps guide wins
+// The Today page is an opt-in extra: it only pops up when "today": true is in data/config.json.
 if (isTop() && !snoozed() && !guideRunning()) {
-  if (typeof window.BellaOpenToday === 'function') window.BellaOpenToday('/today.html?popup=1', 'Today');
-  else buildOverlay();
+  fetch('/api/config').then(r => r.json()).then(c => {
+    if (!c.today) return;
+    if (typeof window.BellaOpenToday === 'function') window.BellaOpenToday('/today.html?popup=1', 'Today');
+    else buildOverlay();
+  }).catch(() => {});
 }

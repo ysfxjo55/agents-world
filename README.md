@@ -6,14 +6,25 @@
 
 **See all your AI sessions in one place, and get told the moment one finishes.**
 
-Agent World is a local web app for people who use AI coding agents. It finds your **Claude Code**, **Codex** and **OpenCode** sessions (also the ones you started in a normal terminal) and shows them as a small 3D world: every project is an island, every session a building, and a robot works, waits or sleeps depending on what the agent is doing. When a session finishes, you get a desktop notification. There is also a chat page to read and continue any session, two manager agents (Bella on Claude Code, Interstellar on Codex) who can start other agents for you, a Today page and an overnight Research Lab.
+Agent World is a local web app for people who use AI coding agents. It finds your **Claude Code**, **Codex** and **OpenCode** sessions (also the ones you started in a normal terminal) and shows them as a small 3D world: every project is an island, every session a building, and a robot works, waits or sleeps depending on what the agent is doing. When a session finishes, you get a desktop notification. There is also a chat page to read and continue any session, two manager agents (Bella and Interstellar) who can start other agents for you, an overnight Research Lab and an optional Today page.
 
 Everything runs on your own computer. Nothing is sent anywhere except what the agents themselves send to their AI providers.
 
 ## What you need
 - **Node.js 22.5 or newer** (from https://nodejs.org).
-- At least one of these, installed and logged in: **Claude Code** (`claude`), **Codex** (`codex`), **OpenCode** (`opencode`). Agent World reads their session files and starts them for you. It does not have its own AI account.
+- At least one of these, installed and logged in: **Claude Code** (`claude`), **Codex** (`codex`), **OpenCode** (`opencode`). Agent World reads their session files and starts them for you. It does not have its own AI account. See "Which subscription do I need?" below.
 - macOS or Windows. Linux works too, but desktop notifications and "open in terminal" are skipped there.
+
+## Which subscription do I need?
+**One is enough.** Agent World never asks for your password or API key: it runs the AI programs you already use, logged in with your own account.
+
+| You have | Install | Log in | What you get |
+|---|---|---|---|
+| Claude Pro or Max | Claude Code: `curl -fsSL https://claude.ai/install.sh \| bash` (Windows PowerShell: `irm https://claude.ai/install.ps1 \| iex`) | run `claude` and log in in the browser | Everything. Bella and Interstellar both run on Claude Code. |
+| ChatGPT Plus or Pro | Codex: `npm install -g @openai/codex` | run `codex` and choose "Sign in with ChatGPT" | Everything except the Claude-only extras: Bella and Interstellar both run on Codex. On Codex, Bella cannot start other agents, and the Agent Guild and Research Lab need Claude Code. |
+| Both | both of the above | both | Each manager gets its own brain: Bella on Claude Code, Interstellar on Codex. |
+
+The free Claude plan does not include Claude Code. OpenCode works for plain chats too, but Bella and Interstellar need Claude Code or Codex. The first-steps guide shows what it found on your computer and the commands for anything missing. To choose yourself, set `agents` in `data/config.json` (see Settings).
 
 ## Install and start
 
@@ -38,7 +49,7 @@ Then open http://localhost:4321. Or double-click **Agent World.cmd**.
 The app only listens on 127.0.0.1, so other computers on your network cannot reach it.
 
 ### First steps guide
-On your first visit a short guide opens. You learn the app by doing each step yourself: set your name, find a session in the world, start a small read-only task on the Chat page, wait for the "task done" alert, and see the access levels. Each step moves on only when you do it (or press "Skip this step"). Esc closes it, a reload continues where you stopped, and the **? Guide** button (top right on the World and Chat pages) starts it again. Progress is kept in your browser; your name is saved in `data/config.json`.
+On your first visit a short guide opens. You learn the app by doing each step yourself: choose an empty world or your existing sessions, connect your AI (it shows which programs it found and how to install or log in to the others), set your name, start a small read-only task on the Chat page, wait for the "task done" alert, see the access levels, and find your new session in the world. Each step moves on only when you do it (or press "Skip this step"). Esc closes it, a reload continues where you stopped, and the **? Guide** button (top right on the World and Chat pages) starts it again. Progress is kept in your browser; your name is saved in `data/config.json`.
 
 To check that alerts work: `npm run test-notify`. On macOS, if no banner appears, allow notifications for "Script Editor" in System Settings > Notifications. On Windows, check that notifications are on in Settings > System > Notifications.
 
@@ -51,6 +62,9 @@ Copy `config.example.json` to `data/config.json` and edit it. Every setting is o
   - `"ntfy": "https://ntfy.sh/<your-topic>"` also sends each alert to your phone with the free ntfy app. Off when empty. Anyone who knows the topic name can read it, so pick a long random name.
 - `links`: your own shortcuts in the sidebar (`https://` only).
 - `projectNames`: a nicer name for a project folder.
+- `showSince`: "start fresh". The world and the lists only show sessions active since this moment (a date like `"2026-10-26"` or a number in ms; `0` shows everything). Older sessions are only hidden, never deleted: tick "Show older & archived" to see them. The guide's first step sets it for you. For a quick test you can also start with `AGENT_WORLD_SHOW_SINCE=now npm start`.
+- `agents`: which program Bella and Interstellar run on, for example `{"interstellar": {"engine": "claude"}}`. Values: `"claude"` or `"codex"`. If that program is not installed, the other one is used. Default: Bella on Claude Code, Interstellar on Codex; with only one program installed, both use it.
+- `today`: `true` turns on the Today page (a daily plan page that opens once a day). Off by default.
 - `hosts` and `owner`: only for private remote access with Tailscale (see below). Leave them empty otherwise.
 
 To change Bella, Interstellar or your other agents (names, personality, rules), see [starter/README.md](starter/README.md).
@@ -126,7 +140,7 @@ Open **http://localhost:4321/chat.html** (or the 💬 Chat button in the World).
 - Closing the page does not stop a running agent. Max 3 chats at once. Anything also running in a Terminal on the same session may interleave.
 
 ### Today screen
-Open **http://localhost:4321/today.html** (or the **Today** button in the World sidebar / chat menu). It shows only today: habits due (tap to tick), overdue / due-today / in-progress tasks, and today's logged sessions. It refreshes every 5 seconds. A small chat strip at the bottom sends a message to Claude Code in your `life/` folder ("Can edit files" mode) so you can say what you finished; **Check my calendar** asks it to compare your day with the board. Editing only works on this computer. Habits and tasks come from an optional board server you add yourself in `life/` (a `server.py` that answers `/api/board/...`); without it, Today shows only your sessions.
+Off by default: set `"today": true` in `data/config.json` first. Then open **http://localhost:4321/today.html** (or the **Today** button in the World sidebar / chat menu). It shows only today: habits due (tap to tick), overdue / due-today / in-progress tasks, and today's logged sessions. It refreshes every 5 seconds. A small chat strip at the bottom sends a message to Claude Code in your `life/` folder ("Can edit files" mode) so you can say what you finished; **Check my calendar** asks it to compare your day with the board. Editing only works on this computer. Habits and tasks come from an optional board server you add yourself in `life/` (a `server.py` that answers `/api/board/...`); without it, Today shows only your sessions.
 
 ### Checks (what CI runs)
 ```

@@ -1,7 +1,7 @@
 // The first-steps guide on screen: dims the page, rings the real button, and shows one small card.
 // The rules live in guide-logic.js. The pages tell us what happened with window events named 'aw-guide'
 // (detail = { type: 'selected' | 'sent' | 'started' | 'run-done' | 'status', ... }).
-import { KEY, load, save, onEvent, current, close, restart, onPage, label } from './guide-logic.js';
+import { KEY, ENGINES, load, save, onEvent, current, close, restart, onPage, label, engineWorks } from './guide-logic.js';
 
 const isTop = (() => { try { return window.self === window.top; } catch { return false; } })();
 const page = document.getElementById('world') ? 'world' : 'chat';
@@ -9,7 +9,7 @@ const ls = { get: () => { try { return localStorage.getItem(KEY); } catch { retu
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
 
-let st = load(ls.get()), shown = null, localRun = false, lastFocus = null;
+let st = load(ls.get()), shown = null, localRun = false, lastFocus = null, cfg = null;   // cfg = /api/config: start choice, engines, name
 const set = (s) => { if (s === st) return; st = s; ls.set(save(st)); render(); };
 const feed = (ev) => set(onEvent(st, ev));
 
@@ -46,7 +46,7 @@ function render() {
   if (!step || !isTop) { [shade, ring, card].forEach(x => x.remove()); shown = null; document.removeEventListener('keydown', onKey, true); return; }
   if (!card.isConnected) { document.body.append(shade, ring, card); document.addEventListener('keydown', onKey, true); lastFocus ||= /** @type {HTMLElement} */ (document.activeElement); }
   const away = !onPage(step, page) ? goTarget() : null;
-  const key = step.id + (away ? ':away' : '');
+  const key = step.id + (away ? ':away' : '') + (cfg ? ':cfg' : '');
   if (shown !== key) { shown = key; fill(step, away); }
   place();
 }
@@ -61,10 +61,12 @@ function fill(step, away) {
     if (step.warn) card.append(el('p', 'gd-warn', step.warn));
     if (step.wrongMode) { const w = el('p', 'gd-warn', step.wrongMode); w.id = 'gdWrong'; w.hidden = true; card.append(w); }
     if (step.input === 'name') card.append(nameForm());
+    if (step.choice === 'start' && cfg && !cfg.startChosen) card.append(startChoice());
+    if (step.engines) card.append(engineList());
     if (step.notify) card.append(notifyHelp());
   }
   const row = el('div', 'gd-row');
-  if (!away && step.action) { const go = el('button', 'gd-btn primary', step.action); go.type = 'button'; go.onclick = () => feed({ type: 'next' }); row.append(go); }
+  if (!away && step.action && !(step.choice === 'start' && cfg && !cfg.startChosen)) { const go = el('button', 'gd-btn primary', step.action); go.type = 'button'; go.onclick = () => feed({ type: 'next' }); row.append(go); }
   if (!(step.id === 'welcome' || step.id === 'done')) { const sk = el('button', 'gd-link', 'Skip this step'); sk.type = 'button'; sk.onclick = () => feed({ type: 'skip' }); row.append(sk); }
   if (step.id === 'welcome') { const no = el('button', 'gd-link', 'Not now'); no.type = 'button'; no.onclick = quit; row.append(no); }
   card.append(row);
@@ -74,13 +76,51 @@ function fill(step, away) {
 function nameForm() {
   const f = el('form', 'gd-form'), inp = el('input'); inp.id = 'gdName'; inp.maxLength = 40; inp.autocomplete = 'given-name'; inp.placeholder = 'Your first name'; inp.setAttribute('aria-label', 'Your first name');
   const ok = el('button', 'gd-btn primary', 'Save'); ok.type = 'submit'; const msg = el('p', 'gd-soft');
-  fetch('/api/config').then(r => r.json()).then(c => { if (c.name && !inp.value) inp.value = c.name; }).catch(() => {});
+  if (cfg?.name) inp.value = cfg.name;
   f.onsubmit = async (e) => {
     e.preventDefault(); ok.disabled = true;
     const r = await post('/api/settings/name', { name: inp.value }).catch(() => ({ error: 'Could not reach the app.' }));
     ok.disabled = false; if (r.ok) feed({ type: 'name-saved' }); else msg.textContent = r.error || 'Could not save it.';
   };
   f.append(inp, ok, msg); return f;
+}
+// Step 1 on a new install: an empty world, or the sessions already on this computer. Nothing is deleted either way.
+function startChoice() {
+  const box = el('div', 'gd-choice');
+  const pick = async (fresh) => {
+    const r = await post('/api/settings/start', { fresh }).catch(() => null);
+    if (r?.ok) { cfg.startChosen = true; feed({ type: 'next' }); }
+  };
+  const a = el('button', 'gd-btn primary', 'Start with an empty world (recommended)'); a.type = 'button'; a.onclick = () => pick(true);
+  const b = el('button', 'gd-btn', 'Show my existing sessions'); b.type = 'button'; b.onclick = () => pick(false);
+  box.append(a, b, el('p', 'gd-soft', 'Your older sessions stay on your computer. Tick "Show older & archived" in the list to see them any time.'));
+  return box;
+}
+// Step 2: which AI programs are on this computer, and how to get the missing ones. We only show commands; you run them.
+function engineList() {
+  const box = el('div', 'gd-engines'), found = cfg?.engines?.found || {};
+  const os = /Win/i.test(navigator.platform) ? 'win' : 'mac';
+  const copy = (cmd) => { const row = el('div', 'gd-cmd'), code = el('code', '', cmd), b = el('button', 'gd-btn', 'Copy'); b.type = 'button';
+    b.onclick = () => navigator.clipboard.writeText(cmd).then(() => { b.textContent = 'Copied'; setTimeout(() => (b.textContent = 'Copy'), 1200); }).catch(() => {}); row.append(code, b); return row; };
+  for (const [id, e] of Object.entries(ENGINES)) {
+    const f = found[id] || {}, ok = f.installed && f.loggedIn !== false;
+    const d = el('details', 'gd-eng' + (ok ? ' ok' : '')); d.open = !ok && id !== 'opencode' && !engineWorks(found);
+    d.append(el('summary', '', `${e.name}: ${ok ? (f.loggedIn ? 'ready' : 'installed') : f.installed ? 'installed, not logged in' : 'not found'}`));
+    if (!ok) {
+      d.append(el('p', 'gd-soft', `Needs ${e.plan}.`));
+      if (!f.installed) { d.append(el('p', '', '1. Install it (in Terminal):')); d.append(copy(e.install[os])); }
+      d.append(el('p', '', `${f.installed ? '1' : '2'}. Log in: ${e.loginHow}`)); d.append(copy(e.login));
+    }
+    box.append(d);
+  }
+  const eng = cfg?.engines || {}, name = (x) => ENGINES[x]?.name;
+  if (eng.bella || eng.interstellar) box.append(el('p', 'gd-soft', `Bella will use ${name(eng.bella)}. Interstellar will use ${name(eng.interstellar)}.${eng.bella === eng.interstellar ? ' With one program, they share it.' : ''}`));
+  const row = el('div', 'gd-row'), again = el('button', 'gd-btn', 'Check again'); again.type = 'button';
+  const go = el('button', 'gd-btn primary', 'Continue'); go.type = 'button'; go.disabled = !engineWorks(found); go.onclick = () => feed({ type: 'engine-ok' });
+  again.onclick = async () => { again.disabled = true; const r = await fetch('/api/engines').then(x => x.json()).catch(() => null); if (r) cfg.engines = r; shown = null; render(); };
+  row.append(go, again); box.append(row);
+  if (!engineWorks(found)) box.append(el('p', 'gd-soft', 'After installing, run the login command once, then press "Check again". Still "not found"? Restart Agent World.'));
+  return box;
 }
 function notifyHelp() {
   const d = el('details', 'gd-help'); d.append(el('summary', '', 'No notification?'));
@@ -149,4 +189,15 @@ function resumeWait() {           // reloaded while waiting: check once whether 
   fetch('/api/snapshot').then(r => r.json()).then(snap => dispatchEvent(new CustomEvent('aw-guide', { detail: { type: 'status', sessions: snap.sessions } }))).catch(() => {});
 }
 
-if (isTop) { document.head.append(css); mountButton(); if (page === 'chat') { watchMode(); resumeWait(); } render(); }
+function noEngineNote() {        // no AI program at all: say so on the page, guide or not
+  if (cfg?.engines?.any !== false || document.getElementById('gdNoEngine')) return;
+  const n = el('div', 'gd-noengine'); n.id = 'gdNoEngine'; n.setAttribute('role', 'status');
+  n.append(el('b', '', 'No AI program found. '), document.createTextNode('Agent World runs Claude Code or Codex with your own subscription. Install one: '));
+  for (const [id, href] of [['claude', ENGINES.claude.docs], ['codex', ENGINES.codex.docs]]) { const a = el('a', '', ENGINES[id].name); a.href = href; a.target = '_blank'; a.rel = 'noopener'; n.append(a, document.createTextNode(id === 'claude' ? ' or ' : '. Then press "? Guide".')); }
+  document.body.append(n);
+}
+
+if (isTop) {
+  document.head.append(css); mountButton(); if (page === 'chat') { watchMode(); resumeWait(); } render();
+  fetch('/api/config').then(r => r.json()).then(c => { cfg = c; noEngineNote(); render(); }).catch(() => {});
+}

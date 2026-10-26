@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { startRun, MODES, chatAccessError, INTERSTELLAR_DIR } from './chat.js';
+import { currentEngines } from './engines.js';
 import { sessionBusy } from './runs.js';
 import { HttpError } from './auth.js';
 import { uploadPath as findUpload } from './uploads.js';
@@ -101,7 +102,8 @@ export class FamilyChat {
     if (images.some(id => typeof id !== 'string' || !/^[\w-]+\.(png|jpe?g|gif|webp)$/i.test(id) || !this.uploadPath(id))) throw new HttpError(400, 'unknown image');
     const text = String(b.text || '').trim() || (images.length && action === 'send' ? 'Please look at the attached image.' : '');
     if (!Object.hasOwn(MODES, mode)) throw new HttpError(400, 'bad mode');
-    const gate = chatAccessError({ tool: 'codex', agent: 'interstellar', mode, remote });
+    const eng = currentEngines();
+    const gate = chatAccessError({ tool: eng.interstellar, agent: 'interstellar', mode, remote }) || chatAccessError({ tool: eng.bella, agent: 'bella', mode, remote });
     if (gate) throw new HttpError(gate.status, gate.error);
     if (!['send', 'other', 'discuss'].includes(action) || (action === 'send' && (!text || text.length > 20000))) throw new HttpError(400, 'empty, too long or bad action');
     if (this.active) throw new HttpError(409, 'The family is already answering.');
@@ -161,7 +163,7 @@ export class FamilyChat {
   }
   turn(speaker, mode, state, emit) {
     return new Promise((resolve, reject) => {
-      const tool = speaker === 'bella' ? 'claude' : 'codex', blocks = new Map(), deltas = new Map();
+      const tool = currentEngines()[speaker], blocks = new Map(), deltas = new Map();
       const sessionId = this.sessions()[speaker] || null;
       if (sessionId && sessionBusy(this.runs, `${tool}:${sessionId}`)) return reject(new HttpError(409, 'This session is already answering.'));
       state.entry.key = sessionId ? `${tool}:${sessionId}` : null;

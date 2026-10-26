@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { STEPS, fresh, load, save, onEvent, current, close, restart, isActive, onPage, label } from '../public/guide-logic.js';
-import { saveName } from '../server/config.js';
+import { STEPS, ENGINES, fresh, load, save, onEvent, current, close, restart, isActive, onPage, label, engineWorks } from '../public/guide-logic.js';
+import { saveName, saveSettings, parseSince } from '../server/config.js';
+import { detectEngines, engineFor, engineSummary } from '../server/engines.js';
 
 const at = (id) => ({ ...fresh(), step: STEPS.findIndex(s => s.id === id) });
 const idOf = (s) => current(s)?.id;
@@ -19,6 +20,7 @@ test('a first visit (nothing saved) opens the guide at step 1', () => {
 test('each step moves on only on its own event', () => {
   const cases = [
     ['welcome', { type: 'selected', session: true }, { type: 'next' }],
+    ['connect', { type: 'next' }, { type: 'engine-ok' }],
     ['name', { type: 'next' }, { type: 'name-saved' }],
     ['world', { type: 'selected', session: false }, { type: 'selected', session: true }],
     ['chat', { type: 'sent', mode: 'full' }, { type: 'sent', mode: 'readonly' }],
@@ -39,6 +41,7 @@ test('the wait step only finishes on the run it started', () => {
   assert.equal(idOf(s), 'wait');
   assert.equal(onEvent(s, { type: 'run-done', key: 'claude:other' }), s);
   assert.equal(idOf(onEvent(s, { type: 'run-done', key: 'claude:abc' })), 'access');
+  assert.deepEqual(STEPS.map(x => x.id), ['welcome', 'connect', 'name', 'chat', 'wait', 'access', 'world', 'done']);
 });
 
 test('"started" outside the wait step changes nothing', () => {
@@ -47,7 +50,7 @@ test('"started" outside the wait step changes nothing', () => {
 });
 
 test('skip moves on one step; the last step finishes the guide', () => {
-  assert.equal(idOf(onEvent(at('name'), { type: 'skip' })), 'world');
+  assert.equal(idOf(onEvent(at('name'), { type: 'skip' })), 'chat');
   const end = onEvent(at('done'), { type: 'next' });
   assert.equal(end.status, 'done');
   assert.equal(current(end), null);
@@ -69,7 +72,7 @@ test('closed stays closed after a reload, and the Guide button starts again', ()
 });
 
 test('broken saved data starts a fresh guide', () => {
-  for (const raw of ['nope', '{}', '{"v":1,"status":"active","step":99}', '{"v":1,"status":"weird","step":0}', 'null']) assert.deepEqual(load(raw), fresh(), raw);
+  for (const raw of ['nope', '{}', '{"v":2,"status":"active","step":99}', '{"v":2,"status":"weird","step":0}', '{"v":1,"status":"active","step":3}', 'null']) assert.deepEqual(load(raw), fresh(), raw);
 });
 
 test('steps know their page', () => {
@@ -89,5 +92,71 @@ test('saveName keeps the other settings and refuses empty or long names', () => 
   assert.equal(saveName('x'.repeat(41), file), null);
   assert.equal(saveName(42, file), null);
   assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).name, 'Lee');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('the Connect step needs at least one engine that is installed and not logged out', () => {
+  assert.equal(engineWorks({}), false);
+  assert.equal(engineWorks({ claude: { installed: true, loggedIn: false } }), false);
+  assert.equal(engineWorks({ claude: { installed: false, loggedIn: false }, codex: { installed: true, loggedIn: true } }), true);
+  for (const e of Object.values(ENGINES)) { assert.ok(e.install.mac && e.install.win && e.login && /^https:\/\//.test(e.docs)); }
+});
+
+test('detectEngines finds programs on PATH and login files, without reading tokens', () => {
+  const home = '/h', files = new Set(['/h/.local/bin/claude', '/usr/local/bin/codex', '/h/.codex/auth.json']);
+  const read = (f) => { assert.equal(f, '/h/.claude.json'); return JSON.stringify({ oauthAccount: { emailAddress: 'x' } }); };
+  const found = detectEngines({ env: { PATH: '' }, platform: 'darwin', home, exists: (f) => files.has(f), read });
+  assert.deepEqual(found, { claude: { installed: true, loggedIn: true }, codex: { installed: true, loggedIn: true }, opencode: { installed: false, loggedIn: false } });
+  const none = detectEngines({ env: { PATH: '' }, platform: 'darwin', home, exists: () => false, read: () => '{}' });
+  assert.equal(engineSummary(none).any, false);
+  assert.equal(engineSummary(none).bella, null);
+});
+
+test('with one engine both agents use it; a setting can move an agent; an uninstalled setting is ignored', () => {
+  const both = { claude: { installed: true }, codex: { installed: true } }, onlyClaude = { claude: { installed: true } }, onlyCodex = { codex: { installed: true } };
+  assert.deepEqual([engineFor('bella', both), engineFor('interstellar', both)], ['claude', 'codex']);
+  assert.deepEqual([engineFor('bella', onlyClaude), engineFor('interstellar', onlyClaude)], ['claude', 'claude']);
+  assert.deepEqual([engineFor('bella', onlyCodex), engineFor('interstellar', onlyCodex)], ['codex', 'codex']);
+  assert.equal(engineFor('interstellar', both, { interstellar: { engine: 'claude' } }), 'claude');
+  assert.equal(engineFor('bella', onlyClaude, { bella: { engine: 'codex' } }), 'claude');
+  assert.equal(engineFor('bella', { opencode: { installed: true } }), null);
+});
+
+test('start fresh: parseSince and saveSettings keep the other settings', () => {
+  assert.equal(parseSince(undefined), null);
+  assert.equal(parseSince('now', 5), 5);
+  assert.equal(parseSince(0), 0);
+  assert.equal(parseSince('2026-10-01T00:00:00Z'), Date.parse('2026-10-01T00:00:00Z'));
+  assert.equal(parseSince('soon'), null);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-set-')), file = path.join(dir, 'config.json');
+  fs.writeFileSync(file, JSON.stringify({ name: 'Sam' }));
+  saveSettings({ showSince: 123 }, file);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { name: 'Sam', showSince: 123 });
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('one engine: Bella and Interstellar both run on it, and the chat rules follow', async () => {
+  const { chatAccessError, bellaCodexPrompt, interstellarPrompt } = await import('../server/chat.js');
+  const { setEngines, currentEngines } = await import('../server/engines.js');
+  const before = currentEngines();
+  try {
+    setEngines(engineSummary({ claude: { installed: true, loggedIn: true } }));
+    assert.equal(chatAccessError({ tool: 'claude', mode: 'readonly', agent: 'interstellar', remote: false }), null);
+    assert.match(chatAccessError({ tool: 'codex', mode: 'readonly', agent: 'interstellar', remote: false }).error, /Claude Code/);
+    setEngines(engineSummary({ codex: { installed: true, loggedIn: true } }));
+    assert.equal(chatAccessError({ tool: 'codex', mode: 'readonly', agent: 'bella', remote: false }), null);
+    assert.match(chatAccessError({ tool: 'codex', mode: 'readonly', agent: 'architect', remote: false }).error, /Claude Code/);
+    setEngines(engineSummary({}));
+    assert.match(chatAccessError({ tool: 'claude', mode: 'readonly', agent: 'bella', remote: false }).error, /Install/);
+  } finally { setEngines(before); }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-p-'));
+  fs.writeFileSync(path.join(dir, 'bella.md'), '---\nname: bella\n---\nYou are Bella.');
+  const first = bellaCodexPrompt('hi', null, false, { agentsDir: dir, memDir: dir });
+  assert.match(first, /^\[Bella instructions\]\nYou are Bella\./);
+  assert.match(first, /cannot start other agents/);
+  assert.ok(first.endsWith('\n\nhi'));
+  assert.equal(bellaCodexPrompt('hi', 'old-session', false, { agentsDir: dir, memDir: dir }), 'hi');   // only the first message carries it
+  fs.writeFileSync(path.join(dir, 'AGENTS.md'), 'I am Interstellar.');
+  assert.equal(interstellarPrompt(dir), 'I am Interstellar.');
   fs.rmSync(dir, { recursive: true, force: true });
 });

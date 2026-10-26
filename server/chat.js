@@ -10,6 +10,7 @@ import { withToolPath, resolveBin } from './util.js';
 import { USER } from './config.js';
 import { toolBrief } from './sources/claude.js';
 import { personaFor, codexPersonaPrompt } from './family-persona.js';
+import { currentEngines, ENGINE_NAMES } from './engines.js';
 import { UPLOADS, originalOf } from './uploads.js';
 
 // Runs one chat turn by driving the real CLI headlessly and translating its output into simple events.
@@ -65,10 +66,30 @@ export function bellaArgs(mode, memDir = BELLA_MEMORY, remote = false, familyDir
 
 export const INTERSTELLAR_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'interstellar');
 const FAMILY_DIR = path.join(INTERSTELLAR_DIR, '..', 'family');
+const AGENTS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'agents');
+
+// Interstellar on Claude Code (when Codex is not installed): his instructions live in AGENTS.md in his folder, which only Codex reads by itself.
+export function interstellarPrompt(dir = INTERSTELLAR_DIR) {
+  let own = ''; try { own = fs.readFileSync(path.join(dir, 'AGENTS.md'), 'utf8').slice(0, 12000); } catch { /* no instructions yet */ }
+  return own || 'You are Interstellar, a calm and practical partner who builds and fixes things.';
+}
+
+// Bella on Codex (when Claude Code is not installed): her instructions and memory index go in front of the first message.
+// Codex has no tool rules like Claude Code, so she cannot start other agents here; the sandbox still applies.
+export function bellaCodexPrompt(text, sessionId, remote = false, { agentsDir = AGENTS_DIR, memDir = BELLA_MEMORY } = {}) {
+  if (sessionId) return text;
+  let who; try { who = fs.readFileSync(path.join(agentsDir, 'bella.md'), 'utf8').replace(/^---[\s\S]*?---\s*/, ''); } catch { who = 'You are Bella, the user\'s personal assistant.'; }
+  let mem = ''; try { mem = fs.readFileSync(path.join(memDir, 'MEMORY.md'), 'utf8').slice(0, 12000); } catch { /* no memory yet */ }
+  const note = remote ? 'This is a read-only chat: do not change files.' : `You run on Codex here, so you cannot start other agents. Say so if the user asks for that. Your memory folder is ${memDir}; you can save notes there only when the chat allows editing.`;
+  return `[Bella instructions]\n${who}\n${note}\n${mem ? '\n# Your memory index (MEMORY.md)\n' + mem : ''}\n[/Bella instructions]\n\n${text}`;
+}
 export function chatAccessError({ tool, mode, agent, remote }) {
   if (mode !== 'readonly' && remote) return { status: 403, error: 'Through Tailscale only read-only chat is allowed. Use this computer for editing or full access.' };
-  if (agent === 'interstellar' && tool !== 'codex') return { status: 400, error: 'Interstellar runs on Codex.' };
-  if (agent && agent !== 'interstellar' && tool !== 'claude') return { status: 400, error: 'Agents other than Interstellar run on Claude Code.' };
+  const eng = currentEngines();
+  if ((agent === 'bella' || agent === 'interstellar') && !eng[agent]) return { status: 400, error: 'Install and log in to Claude Code or Codex first.' };
+  if (agent === 'interstellar' && tool !== eng.interstellar) return { status: 400, error: `Interstellar runs on ${ENGINE_NAMES[eng.interstellar]} here.` };
+  if (agent === 'bella' && tool !== eng.bella) return { status: 400, error: `Bella runs on ${ENGINE_NAMES[eng.bella]} here.` };
+  if (agent && agent !== 'interstellar' && agent !== 'bella' && tool !== 'claude') return { status: 400, error: 'Agents other than Bella and Interstellar run on Claude Code.' };
   return null;
 }
 
@@ -90,8 +111,10 @@ export const releaseRunToken = (t) => runTokens.delete(t);
 export const maxModeForToken = (t) => runTokens.get(String(t || '')) || 'readonly';
 
 export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [], addDirs = [], remote = false, usageSource = 'chat' }, emitCallback, onClose) {
-  if (agent === 'interstellar' && tool !== 'codex') throw new Error('Interstellar runs on Codex.');
-  if (tool === 'codex' && path.resolve(cwd) === path.resolve(INTERSTELLAR_DIR)) agent = 'interstellar';
+  const eng = currentEngines();
+  if (agent === 'interstellar' && tool !== eng.interstellar) throw new Error(`Interstellar runs on ${ENGINE_NAMES[eng.interstellar] || 'Codex'} here.`);
+  if (agent === 'bella' && tool !== eng.bella) throw new Error(`Bella runs on ${ENGINE_NAMES[eng.bella] || 'Claude Code'} here.`);
+  if (tool === eng.interstellar && path.resolve(cwd) === path.resolve(INTERSTELLAR_DIR)) agent = 'interstellar';
   if (agent === 'interstellar') {
     cwd = INTERSTELLAR_DIR;
     if (!fs.existsSync(cwd)) throw new Error('Interstellar folder is missing: ' + cwd);
@@ -100,14 +123,16 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
   const env = Object.fromEntries(Object.entries(withToolPath(process.env)).filter(([k]) => !k.startsWith('AGENT_WORLD_')));
   env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = String(COMPACT_TOKENS);       // Claude Code reads this; see COMPACT_TOKENS
   let runToken = null;
-  if (agent === 'bella') { env.BELLA_MAX_MODE = mode; runToken = env.BELLA_RUN_TOKEN = issueRunToken(mode); }   // BELLA_MAX_MODE is only informational; the server trusts the token and clamps what she may start
+  if (agent === 'bella' && tool === 'claude') { env.BELLA_MAX_MODE = mode; runToken = env.BELLA_RUN_TOKEN = issueRunToken(mode); }   // only on Claude Code, where her tool rules limit what she runs   // BELLA_MAX_MODE is only informational; the server trusts the token and clamps what she may start
   let cmd, args, stdin = null, key = sessionId ? `${tool}:${sessionId}` : null;
   if (tool === 'claude') {
     cmd = 'claude';
     args = ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', ...MODES[agent === 'bella' && mode === 'build' ? 'edits' : mode]];   // Bella herself never gets the run-commands mode: it is only the ceiling for the agents she starts
+    const isNew = !sessionId;
     if (sessionId) args.push('--resume', sessionId); else { sessionId = crypto.randomUUID(); key = `claude:${sessionId}`; args.push('--session-id', sessionId); }
-    if (agent) args.push('--agent', agent);
+    if (agent && agent !== 'interstellar') args.push('--agent', agent);
     if (agent === 'bella') args.push(...bellaArgs(mode, BELLA_MEMORY, remote));
+    if (agent === 'interstellar' && isNew) args.push('--append-system-prompt', interstellarPrompt());   // Claude Code reads CLAUDE.md, not his AGENTS.md
     const persona = personaFor({ tool, agent });
     if (persona) args.push('--append-system-prompt', persona + (remote ? '' : '\n\n' + REMEMBER_TOOLS));
     if (!remote && agent !== 'bella' && mode !== 'full') args.push('--allowedTools', `Bash(${REMEMBER_BIN}:*)`);
@@ -118,8 +143,9 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
     stdin = text;
   } else if (tool === 'codex') {
     cmd = 'codex';
-    text = codexPersonaPrompt(text, agent, sessionId);
-    args = buildCodexArgs({ cwd, sessionId, mode, addDirs: [...new Set([...addDirs, ...(agent === 'interstellar' && ['edits', 'build'].includes(mode) ? [FAMILY_DIR] : [])])] });
+    text = agent === 'bella' ? bellaCodexPrompt(text, sessionId, remote) : codexPersonaPrompt(text, agent, sessionId);
+    const own = agent === 'interstellar' ? [FAMILY_DIR] : agent === 'bella' && !remote ? [BELLA_MEMORY, FAMILY_DIR] : [];   // the folders each manager may write to
+    args = buildCodexArgs({ cwd, sessionId, mode, addDirs: [...new Set([...addDirs, ...(['edits', 'build'].includes(mode) ? own : [])])] });
     if (images.length) text += `\n\n[Attached files: ${images.join(', ')}. Read them before answering.]`;
     stdin = text;
   } else {

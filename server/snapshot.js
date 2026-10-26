@@ -10,7 +10,7 @@ import { listAgents } from './agents.js';
 import { liveRuns, applyRuns } from './runs.js';
 import { config } from './config.js';
 import { INTERSTELLAR_DIR } from './chat.js';
-import { loadDelegations, loadBella } from './bella.js';
+import { loadDelegations, loadBella, bellaMainKey } from './bella.js';
 import { loadCreated } from './newproject.js';
 import { researchSessionMap, listJobs, runnerAlive, RESEARCH_DIR } from './research.js';
 
@@ -29,11 +29,12 @@ export function projectName(p) {
   return path.basename(p) || p;
 }
 
-export const isInterstellarSession = (s) => s.tool === 'codex' && path.resolve(s.cwd || '.') === path.resolve(INTERSTELLAR_DIR);
+// Interstellar's sessions are the ones in his own folder, on whichever engine he runs (Codex, or Claude Code when that is all you have).
+export const isInterstellarSession = (s) => (s.tool === 'codex' || s.tool === 'claude') && path.resolve(s.cwd || '.') === path.resolve(INTERSTELLAR_DIR);
 
 export function interstellarSnapshot(sessions, runs) {
   const own = sessions.filter(isInterstellarSession);
-  return { name: 'interstellar', displayName: 'Interstellar', color: '#ffb347', description: 'Your partner among the stars.', status: own.some(s => runs.codexIds?.has(s.id)) ? 'working' : 'idle', lastUsed: Math.max(0, ...own.map(s => s.lastActivity)) || null, uses: own.length };
+  return { name: 'interstellar', displayName: 'Interstellar', color: '#ffb347', description: 'Your partner among the stars.', status: own.some(s => runs[s.tool + 'Ids']?.has(s.id)) ? 'working' : 'idle', lastUsed: Math.max(0, ...own.map(s => s.lastActivity)) || null, uses: own.length };
 }
 
 export const guildAgents = (everyone) => everyone.filter(a => !['bella', 'deep-researcher', 'interstellar'].includes(a.name));
@@ -64,7 +65,7 @@ export function buildSnapshot(now = Date.now(), registry = new Map()) {
   for (const s of sessions) if (deleg[s.key]) s.delegatedBy = deleg[s.key].by;
   const created = new Set(loadCreated());
   for (const s of sessions) if (created.has(s.cwd)) s.createdProject = true;    // work in a project folder Bella opened for a task: it belongs to that project's block
-  const bs = loadBella(), bellaKeys = [bs.mainSession && `claude:${bs.mainSession}`, ...bs.history].filter(Boolean);
+  const bs = loadBella(), bellaKeys = [bellaMainKey(bs), ...bs.history].filter(Boolean);
   const bella = everyone.find(a => a.name === 'bella') || null;
   if (bella && sessions.some(s => s.delegatedBy === 'bella' && s.status === 'working')) bella.status = 'working';   // she is busy while her agents are      // the manager has her own block, not a pedestal in the Guild
   const lab = everyone.find(a => a.name === 'deep-researcher') || null;      // the Research Lab has its own block, like Bella HQ
@@ -77,5 +78,5 @@ export function buildSnapshot(now = Date.now(), registry = new Map()) {
   const agents = guildAgents(everyone);
   // research job folders are not projects you can pick
   const visibleProjects = [...projects.values()].filter(p => !p.path.startsWith(RESEARCH_DIR + '/')).sort((a, b) => b.lastActivity - a.lastActivity);
-  return { now, home: os.homedir(), agents, bella, bellaKeys, lab, interstellar, projects: visibleProjects, sessions: sessions.sort((a, b) => b.lastActivity - a.lastActivity) };
+  return { now, home: os.homedir(), showSince: config.showSince || 0, agents, bella, bellaKeys, lab, interstellar, projects: visibleProjects, sessions: sessions.sort((a, b) => b.lastActivity - a.lastActivity) };
 }

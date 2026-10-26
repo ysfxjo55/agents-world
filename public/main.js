@@ -27,7 +27,7 @@ const robotSvg = (color) => `<svg viewBox="0 0 40 40" width="34" height="34"><re
 /* ---------- data ---------- */
 function visible(snap) {
   const now = Date.now();
-  return snap.sessions.filter(s => !s.familyChat && (state.showAll || (!s.archived && now - s.lastActivity < DAY)));
+  return snap.sessions.filter(s => !s.familyChat && (state.showAll || (!s.archived && now - s.lastActivity < DAY && s.lastActivity >= (snap.showSince || 0))));   // "start with an empty world" hides what came before
 }
 // Bella's own conversation threads, and agents she started for small jobs, live at her HQ. Sessions in a project folder she created for a task do not.
 const isBellaChat = (s) => (state.snap?.bellaKeys || []).includes(s.key) || (s.agent === 'bella' && s.cwd === state.snap?.home);
@@ -43,7 +43,7 @@ function apply(snap) {
   renderSidebar(list); renderCounts(list); refreshCard(); $('empty').hidden = list.length > 0;
   if (!state.framed && (list.length || snap.interstellar)) { state.framed = true; setTimeout(() => world.home(), 300); }
   const needs = list.filter(s => s.status === 'needs').length;
-  document.title = needs ? `(${needs}) Bella` : 'Bella';
+  document.title = needs ? `(${needs}) Agent World` : 'Agent World';
 }
 const find = (key) => state.snap?.sessions.find(s => s.key === key);
 const findAgent = (key) => (key === 'interstellar' ? state.snap?.interstellar : key === 'bella' ? state.snap?.bella : key === 'lab' ? state.snap?.lab : state.snap?.agents?.find(a => 'agent:' + a.name === key));
@@ -91,9 +91,9 @@ function renderSidebar(list) {
     const n = el('button', 'row'); const em2 = el('span', 'em'); em2.innerHTML = badge('new', '#4fd1e8'); n.append(em2, el('span', 't', 'New research'), el('span', 'a', 'open'));
     n.onclick = () => openApp('/research.html', 'Research Lab'); g.append(n); box.append(g);
   }
-  { // your own pages: Today and the links from data/config.json
+  if (state.today || state.links.length) { // your own pages: Today (when "today" is on in data/config.json) and your links
     const g = el('div', 'grp life'), h = el('h3'); { const t = el('span', 'gt'); t.innerHTML = icon('life', 14) + ' My life'; h.append(t, el('span', '', '')); } g.append(h);
-    for (const [ic, col, name, url] of [['clock', '#d97757', 'Today', '/today.html']]) {
+    for (const [ic, col, name, url] of state.today ? [['clock', '#d97757', 'Today', '/today.html']] : []) {
       const b = el('button', 'row'); const em = el('span', 'em'); em.innerHTML = badge(ic, col); b.append(em, el('span', 't', name), el('span', 'a', 'open'));
       b.onclick = () => openApp(url, name); g.append(b);
     }
@@ -296,5 +296,5 @@ setInterval(() => { if (state.snap) { renderSidebar(visible(state.snap)); refres
 $('chatBtn').innerHTML = icon('chat', 16) + ' Chat'; setThemeBtn(); connect();
 fetch('/api/config').then(r => r.json()).then(c => {
   if (c.remote) { const a = document.createElement('a'); a.id = 'remotePill'; a.href = 'http://localhost:4321/'; a.target = '_top'; a.textContent = 'Read-only link. On the computer, open localhost:4321 to edit'; $('toolbar').prepend(a); }
-  state.links = c.links || []; if (state.snap) renderSidebar(visible(state.snap)); }).catch(() => {});
+  state.links = c.links || []; state.today = !!c.today; if (state.snap) renderSidebar(visible(state.snap)); }).catch(() => {});
 window.__aw = { world, state };
