@@ -21,6 +21,7 @@ import { trashSession, listTrash, restoreSession, emptyTrash } from './trash.js'
 import { claudeProcessPattern, sessionBusy, liveRuns } from './runs.js';
 import { config, saveName, saveSettings } from './config.js';
 import { detectEngines, engineSummary, setEngines, currentEngines } from './engines.js';
+import { createUpdater, RESTART_CODE } from './updater.js';
 import { checkRequest, originAllowed, HttpError, safeDecode, ownTailnetIps } from './auth.js';
 import { body, rawBody, resolveCwd, isTodayChat, refreshUserPath, inlineScriptHashes } from './util.js';
 import { resolveDownload } from './files.js';
@@ -63,6 +64,11 @@ const clients = new Set();
 const runs = new Map();   // runId -> { child, key }: chat turns in progress
 
 const family = new FamilyChat({ runs });
+
+// Updates: look on GitHub at start and every 6 hours. After an install the server exits with RESTART_CODE and server/start.js starts the new code.
+const updater = createUpdater({ settings: config.updates, busy: () => runs.size > 0,
+  onInstalled: () => setTimeout(() => { for (const c of clients) c.end(); process.exit(RESTART_CODE); }, 500) });   // after the page got its answer
+setTimeout(() => updater.check(), 5000).unref(); setInterval(() => updater.check(), 6 * 3600_000).unref();
 
 /* ---------- live snapshot ---------- */
 const notifier = makeNotifier(config.notify);
@@ -182,7 +188,8 @@ async function handle(req, res) {
   }
   if (p === '/api/snapshot') { fresh(); return json(res, 200, snapshot); }
   if (p === '/api/config') return json(res, 200, { links: config.links, remote: auth.remote, lifeDir: LIFE_DIR, name: config.name, today: config.today, startChosen: config.showSince !== null, engines: currentEngines() });
-  if (p === '/api/engines' && !write) return json(res, 200, refreshEngines());   // "Check again" in the guide
+  if (p === '/api/engines' && !write) return json(res, 200, refreshEngines());
+  if (p === '/api/update' && !write) return json(res, 200, { ...updater.state, supervised: !!process.env.AGENT_WORLD_SUPERVISED });   // "Check again" in the guide
   if (await familyInboxRoute({ req, res, p, auth, json, body, dir: process.env.AGENT_WORLD_FAMILY_DIR || path.join(ROOT, 'data', 'family'), logAction })) return;
   fresh();
   if (await researchRoutes({ req, res, p, write, auth, json, body })) return;
@@ -236,6 +243,11 @@ async function handle(req, res) {
       if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
       const name = saveName((await body(req))?.name);
       return name ? json(res, 200, { ok: true, name }) : json(res, 400, { error: 'Type a name of 1 to 40 letters.' });
+    }
+    if (p === '/api/update/install') {                                  // "Update now" in the banner
+      if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
+      if (!process.env.AGENT_WORLD_SUPERVISED) return json(res, 200, { ok: false, error: 'Start Agents World with npm start or its start file to update from here.' });
+      return json(res, 200, await updater.install());
     }
     if (p === '/api/settings/start') {                                 // the guide's first step: an empty world, or your existing sessions
       if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });

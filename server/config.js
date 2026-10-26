@@ -30,7 +30,8 @@ export const config = {
   links: Array.isArray(file.links) ? file.links.filter(l => l && /^https:\/\//.test(l.url) && l.name).slice(0, 8) : [],
   showSince: parseSince(process.env.AGENT_WORLD_SHOW_SINCE ?? file.showSince),   // "start fresh": hide sessions not active since then. null = never chosen, 0 = show all
   today: process.env.AGENT_WORLD_TODAY ? process.env.AGENT_WORLD_TODAY === '1' : file.today === true,   // the Today page and its daily popup; off unless you turn it on
-  agents: file.agents && typeof file.agents === 'object' ? file.agents : {},   // which engine each manager uses, e.g. {"interstellar": {"engine": "claude"}}
+  agents: file.agents && typeof file.agents === 'object' ? file.agents : {},
+  updates: { check: file.updates?.check !== false, auto: file.updates?.auto === true },   // look for a newer version on GitHub; "auto" installs it without asking   // which engine each manager uses, e.g. {"interstellar": {"engine": "claude"}}
 };
 
 /** Your name in agent prompts ("the user" until you set "name" in data/config.json). */

@@ -207,3 +207,49 @@ test('no 3D: the stand-in world does nothing safely; a dead connection shows hel
   c.ok(); assert.equal(shown, null);
   c.error(); c.error(); assert.equal(shown, null); c.error(); assert.equal(shown, CONN_HELP);   // three errors in a row
 });
+
+test('updates: version compare, changelog notes, git or ZIP, never touch data, turned off', async () => {
+  const { compareVersions, notesFor, installKind, shouldCopy, copyRelease, createUpdater } = await import('../server/updater.js');
+  assert.equal(compareVersions('0.2.10', '0.2.9'), 1);
+  assert.equal(compareVersions('0.2.0', '0.2'), 0);
+  assert.equal(compareVersions('1.0.0', '1.0.1'), -1);
+  assert.equal(compareVersions('garbage', '0.0.1'), -1);
+  const log = '## 0.3.0\n- c\n\n## 0.2.1\r\n- b\n## 0.2.0\n- a\n';
+  assert.deepEqual(notesFor(log, '0.2.0', '0.3.0'), ['c', 'b']);
+  assert.deepEqual(notesFor(log, '0.2.0', '0.2.1'), ['b']);
+  assert.equal(installKind('/x', (f) => f === path.join('/x', '.git')), 'git');
+  assert.equal(installKind('/x', () => false), 'zip');
+  for (const p of ['data/config.json', 'data', '.env', '.env.local', 'node_modules/three/x.js', '.git/HEAD', 'life/board.json', '../evil']) assert.equal(shouldCopy(p), false, p);
+  for (const p of ['server/index.js', 'public/main.js', 'README.md', 'package.json', 'Agents World.cmd']) assert.equal(shouldCopy(p), true, p);
+  // a ZIP update copies app files, keeps data, and backs up what it replaced
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-up-')), from = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-new-')), backup = path.join(root, 'data', 'backups', 'b');
+  fs.mkdirSync(path.join(root, 'data')); fs.writeFileSync(path.join(root, 'data', 'config.json'), 'mine'); fs.writeFileSync(path.join(root, 'app.js'), 'old');
+  fs.mkdirSync(path.join(from, 'data')); fs.writeFileSync(path.join(from, 'data', 'config.json'), 'theirs'); fs.writeFileSync(path.join(from, 'app.js'), 'new');
+  assert.equal(copyRelease(from, root, backup), 1);
+  assert.equal(fs.readFileSync(path.join(root, 'app.js'), 'utf8'), 'new');
+  assert.equal(fs.readFileSync(path.join(root, 'data', 'config.json'), 'utf8'), 'mine');
+  assert.equal(fs.readFileSync(path.join(backup, 'app.js'), 'utf8'), 'old');
+  // the check: newer version found; nothing asked when turned off; quiet when GitHub says 404
+  fs.writeFileSync(path.join(root, 'package.json'), '{"version":"0.2.0"}');
+  const fake = async (url) => (url.endsWith('package.json') ? { ok: true, json: async () => ({ version: '0.2.1' }) } : { ok: true, text: async () => '## 0.2.1\n- fixed it\n' });
+  const u = createUpdater({ root, doFetch: /** @type {any} */ (fake), log: () => {} });
+  await u.check();
+  assert.deepEqual([u.state.available, u.state.latest, u.state.notes, u.state.kind], [true, '0.2.1', ['fixed it'], 'zip']);
+  let asked = 0;
+  const off = createUpdater({ root, settings: { check: false }, doFetch: /** @type {any} */ (async () => { asked++; return fake(''); }), log: () => {} });
+  await off.check(); assert.equal(asked, 0); assert.equal(off.state.available, false);
+  const lines = [], gone = createUpdater({ root, doFetch: /** @type {any} */ (async () => ({ ok: false, status: 404 })), log: (m) => lines.push(m) });
+  await gone.check(); assert.equal(gone.state.available, false); assert.match(lines[0], /404/);
+  const busy = createUpdater({ root, busy: () => true, doFetch: /** @type {any} */ (fake), log: () => {} });
+  assert.match((await busy.install()).error, /still working/);   // never while an agent works
+  fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(from, { recursive: true, force: true });
+});
+
+test('git update: stops when you changed app files, else pulls fast-forward only', async () => {
+  const { updateGit } = await import('../server/updater.js');
+  const calls = [];
+  assert.throws(() => updateGit('/x', (cmd, args) => { calls.push(args.join(' ')); return ' M server/index.js\n'; }), /changed some app files/);
+  assert.equal(calls.length, 1);
+  const ok = []; updateGit('/x', (cmd, args) => { ok.push(`${cmd} ${args.join(' ')}`); return ''; });
+  assert.deepEqual(ok, ['git status --porcelain --untracked-files=no', 'git pull --ff-only origin main']);
+});

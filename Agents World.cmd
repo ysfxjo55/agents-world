@@ -15,5 +15,5 @@ if not errorlevel 1 (
   exit /b 0
 )
 start "" /b powershell -NoProfile -Command "Start-Sleep 2; Start-Process http://localhost:4321"
-node server\index.js
+node server\start.js
 pause

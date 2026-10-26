@@ -62,6 +62,14 @@ On your first visit a short guide opens. You learn the app by doing each step yo
 
 To check that alerts work: `npm run test-notify`. On macOS, if no banner appears, allow notifications for "Script Editor" in System Settings > Notifications. On Windows, check that notifications are on in Settings > System > Notifications.
 
+## Updates
+Agents World checks GitHub when it starts and every 6 hours. When a newer version is ready, a small box shows what's new with **Update now** and **Later**. Update now installs it and restarts the app by itself; the page reloads.
+- Installed with `git clone`: it runs `git pull` (and `npm install` when needed). If you changed app files yourself, it stops and tells you.
+- Installed from a ZIP: it downloads the new files and copies them over the old ones. The replaced files are kept in `data/backups/`.
+- Your own things are never touched: `data/` (settings, Bella's memory, chats), `.env`, and your `~/.claude` files.
+- Start the app with `npm start` or its start file, so it can restart itself after an update.
+- Settings in `data/config.json`: `"updates": {"check": false}` turns the check off; `"updates": {"auto": true}` installs updates without asking, but never while an agent is working.
+
 ## Settings
 Copy `config.example.json` to `data/config.json` and edit it. Every setting is optional.
 - `name`: your first name. The agents use it ("Tell Sam ..."). Default: "the user".

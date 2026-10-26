@@ -9,4 +9,4 @@ fi
 # already running? just open the page
 if curl -s -o /dev/null http://127.0.0.1:4321/; then open http://localhost:4321; exit 0; fi
 (sleep 1.5; open http://localhost:4321) &
-exec node server/index.js
+exec node server/start.js

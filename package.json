@@ -1,12 +1,12 @@
 {
   "name": "agents-world",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "Your AI coding agents as a living 3D world",
   "type": "module",
   "private": true,
   "license": "AGPL-3.0-only",
   "scripts": {
-    "start": "node server/index.js",
+    "start": "node server/start.js",
     "snapshot": "node server/index.js --snapshot",
     "test-notify": "node server/index.js --test-notify",
     "lint": "eslint .",
