@@ -37,6 +37,9 @@ Then open http://localhost:4321. Or double-click **Agent World.cmd**.
 
 The app only listens on 127.0.0.1, so other computers on your network cannot reach it.
 
+### First steps guide
+On your first visit a short guide opens. You learn the app by doing each step yourself: set your name, find a session in the world, start a small read-only task on the Chat page, wait for the "task done" alert, and see the access levels. Each step moves on only when you do it (or press "Skip this step"). Esc closes it, a reload continues where you stopped, and the **? Guide** button (top right on the World and Chat pages) starts it again. Progress is kept in your browser; your name is saved in `data/config.json`.
+
 To check that alerts work: `npm run test-notify`. On macOS, if no banner appears, allow notifications for "Script Editor" in System Settings > Notifications. On Windows, check that notifications are on in Settings > System > Notifications.
 
 ## Settings

@@ -27,3 +27,23 @@ export const config = {
 export const USER = config.name || 'the user';
 /** Your name on the screens ("you" until you set it). */
 export const userLabel = () => config.name || 'You';
+
+/**
+ * Save your first name (from the first-steps guide) into data/config.json, keeping every other setting.
+ * Returns the cleaned name, or null when it is empty or too long. The agents' prompts pick it up after a restart.
+ * @param {unknown} name
+ * @param {string} [file]
+ */
+export function saveName(name, file = FILE) {
+  const clean = typeof name === 'string' ? [...name].filter(c => c >= ' ' && c !== '\u007f').join('').trim() : '';
+  if (!clean || clean.length > 40) return null;
+  let cur = {};
+  try { cur = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* no config yet */ }
+  if (!cur || typeof cur !== 'object' || Array.isArray(cur)) cur = {};
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = file + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify({ ...cur, name: clean }, null, 2) + '\n');
+  fs.renameSync(tmp, file);
+  if (file === FILE) config.name = clean;
+  return clean;
+}

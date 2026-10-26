@@ -1,0 +1,35 @@
+/* The first-steps guide (guide.js): a dim layer, a ring around the real element, and one small card. */
+.gd-shade { position: fixed; inset: 0; background: rgba(8, 8, 12, .62); z-index: 9000; pointer-events: none; }
+.gd-ring { position: fixed; z-index: 9001; border-radius: 12px; pointer-events: none; box-shadow: 0 0 0 3px #e8e8ee, 0 0 0 9999px rgba(8, 8, 12, .62); transition: left .15s, top .15s, width .15s, height .15s; }
+.gd-card {
+  position: fixed; z-index: 9002; width: min(360px, calc(100vw - 32px)); box-sizing: border-box; padding: 16px 18px 14px;
+  background: #1c1c21; color: #e8e8ee; border: 1px solid #3a3a42; border-radius: 14px; box-shadow: 0 18px 50px rgba(0, 0, 0, .55);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+.gd-card.center { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); }
+.gd-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.gd-n { font-size: 12px; color: #9a9aa4; letter-spacing: .02em; }
+.gd-x { background: none; border: 0; color: #9a9aa4; font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.gd-card h2 { margin: 2px 0 6px; font-size: 17px; font-weight: 650; color: #fff; }
+.gd-card p { margin: 0 0 10px; }
+.gd-soft { color: #a8a8b2; font-size: 13px; }
+.gd-warn { color: #f2c48d; font-size: 13px; border-left: 3px solid #d98b3a; padding-left: 8px; }
+.gd-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+.gd-btn { background: #2c2c33; color: #e8e8ee; border: 1px solid #44444d; border-radius: 9px; padding: 7px 14px; font: inherit; cursor: pointer; }
+.gd-btn.primary { background: #e8e8ee; color: #151518; border-color: #e8e8ee; font-weight: 600; }
+.gd-btn:disabled { opacity: .6; cursor: default; }
+.gd-link { background: none; border: 0; color: #a8a8b2; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 4px 0; }
+.gd-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.gd-form input { flex: 1 1 160px; min-width: 0; background: #121216; color: #fff; border: 1px solid #44444d; border-radius: 9px; padding: 7px 10px; font: inherit; }
+.gd-form .gd-soft { flex-basis: 100%; margin: 0; }
+.gd-help { margin: 0 0 10px; font-size: 13px; }
+.gd-help summary { cursor: pointer; color: #c9c9cf; margin-bottom: 6px; }
+.gd-help .gd-btn { margin-bottom: 6px; }
+.gd-card :focus-visible, .gd-open:focus-visible { outline: 2px solid #8ab4ff; outline-offset: 2px; }
+.gd-open { background: rgba(28, 28, 33, .85); color: #e8e8ee; border: 1px solid #3a3a42; border-radius: 9px; padding: 6px 10px; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; cursor: pointer; }
+.gd-open.float { position: fixed; right: 16px; bottom: 16px; z-index: 50; }
+@media (max-width: 760px) {   /* phones: the card is a bottom sheet */
+  .gd-card, .gd-card.center { left: 16px !important; right: 16px; top: auto !important; bottom: 16px; width: auto; transform: none; max-height: 60vh; overflow: auto; }
+  .gd-card.high { top: 16px !important; bottom: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .gd-ring { transition: none; } }

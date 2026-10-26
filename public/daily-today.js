@@ -4,6 +4,7 @@
 // overlay. Nothing here runs inside an iframe (so the embed and the in-page viewer
 // never pop themselves), and "Don't show again today" silences it for the local day.
 import { localDateString } from './today-logic.js';
+import { KEY as GUIDE_KEY, load as loadGuide, isActive as guideOpen } from './guide-logic.js';
 
 const KEY = 'bella.todayShown';
 const today = localDateString();
@@ -35,7 +36,8 @@ addEventListener('message', (e) => {
   }
 });
 
-if (isTop() && !snoozed()) {
+function guideRunning() { try { return guideOpen(loadGuide(localStorage.getItem(GUIDE_KEY))); } catch { return false; } }   // one popup at a time: the first-steps guide wins
+if (isTop() && !snoozed() && !guideRunning()) {
   if (typeof window.BellaOpenToday === 'function') window.BellaOpenToday('/today.html?popup=1', 'Today');
   else buildOverlay();
 }

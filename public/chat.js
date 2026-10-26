@@ -7,6 +7,7 @@ const TOOLS = { claude: 'Claude Code', opencode: 'OpenCode', codex: 'Codex' };
 const MODES = { readonly: 'Read-only', edits: 'Can edit files', build: 'Can build and test', full: 'Full access ⚠' };
 const MODE_HELP = { readonly: 'Can look at files and search the web. It never changes your project files. Bella can still save to her own memory and the family folder.', edits: 'Can also create and edit files', build: 'Can also run git, npm and node to build and test (needed for the builder agent). Powerful: node can run any script.', full: 'Can run any command and change anything, without asking' };
 const isMobile = () => matchMedia('(max-width:760px)').matches;
+const guide = (detail) => dispatchEvent(new CustomEvent('aw-guide', { detail }));   // tells the first-steps guide (guide.js) what happened
 const P = new URLSearchParams(location.search);
 if (P.has('embed')) document.body.classList.add('embed');
 
@@ -244,6 +245,7 @@ async function send() {
   if (ids.length) body.images = ids;
   if (key) body.key = key; else { body.tool = S.tool; if (S.dir) body.cwd = S.dir; }
   if (S.agent && !(key && find(key)?.tool === 'opencode')) body.agent = S.agent;
+  guide({ type: 'sent', mode: S.mode });
   const live = { role: 'assistant', blocks: [], live: true, status: 'Starting…' };
   const run = { key, mode: S.mode, draft: !key, ctrl: new AbortController(), runId: null, live, t0: Date.now(), msgs: S.msgs };
   S.msgs.push({ role: 'user', blocks: [{ type: 'text', text: names.length ? text + '\n\n[attached: ' + names.join(', ') + ']' : text }], images: shown }, live);
@@ -266,6 +268,7 @@ function onEvent(run, ev) {
   if (ev.runId) run.runId = ev.runId;
   if (ev.t === 'start') {
     if (run.draft) { if (S.runs.get('__draft__') === run) S.runs.delete('__draft__'); run.key = ev.key; run.draft = false; S.runs.set(ev.key, run); if (!S.key) { S.key = ev.key; history.replaceState(null, '', '#' + ev.key); } renderTop(); }
+    guide({ type: 'started', key: ev.key });
   } else if (ev.t === 'status') live.status = ev.text;
   else if (ev.t === 'delta') {
     live.status = 'Writing…';
@@ -286,7 +289,7 @@ function finish(run) {
   run.live.live = false;
   for (const b of run.live.blocks) if (b.type === 'tool' && b.result == null) b.result = '';
   S.runs.delete(run.key); if (S.runs.get('__draft__') === run) S.runs.delete('__draft__');
-  paintLive(run); setBusy(); renderSide();
+  paintLive(run); setBusy(); renderSide(); guide({ type: 'run-done', key: run.key });
   if (S.key === run.key) setTimeout(() => loadTranscript(run.key, true), 700);       // swap in the saved version of the conversation
 }
 
@@ -318,7 +321,7 @@ function apply(snap) {
   for (const s of snap.sessions) s.projectName = names.get(s.projectPath);
   const first = !S.snap; S.snap = snap;
   if (first) { fillSelects(); const k = decodeURIComponent(location.hash.slice(1)), ag = P.get('agent'); if (ag === 'bella' && snap.bella) { openBella(); } else if (ag && snap.agents?.some(a => a.name === ag)) { newChat(ag); } else if (k && find(k)) openSession(k); else renderThread(); }
-  renderSide(); renderTop();
+  renderSide(); renderTop(); guide({ type: 'status', sessions: snap.sessions });
   const s = S.key && find(S.key);       // a terminal elsewhere moved this session on: show it live
   if (s && !S.runs.has(S.key) && s.lastActivity !== S.lastAct) { S.lastAct = s.lastActivity; loadTranscript(S.key, true); }
 }

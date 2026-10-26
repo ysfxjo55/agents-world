@@ -18,7 +18,7 @@ import { FamilyChat } from './family.js';
 import { startRun, MODES, INTERSTELLAR_DIR, chatAccessError, maxModeForToken } from './chat.js';
 import { trashSession, listTrash, restoreSession, emptyTrash } from './trash.js';
 import { claudeProcessPattern, sessionBusy, liveRuns } from './runs.js';
-import { config } from './config.js';
+import { config, saveName } from './config.js';
 import { checkRequest, originAllowed, HttpError, safeDecode, ownTailnetIps } from './auth.js';
 import { body, rawBody, resolveCwd, isTodayChat } from './util.js';
 import { resolveDownload } from './files.js';
@@ -175,7 +175,7 @@ async function handle(req, res) {
     clients.add(res); req.on('close', () => clients.delete(res)); return;
   }
   if (p === '/api/snapshot') { fresh(); return json(res, 200, snapshot); }
-  if (p === '/api/config') return json(res, 200, { links: config.links, remote: auth.remote, lifeDir: LIFE_DIR });
+  if (p === '/api/config') return json(res, 200, { links: config.links, remote: auth.remote, lifeDir: LIFE_DIR, name: config.name });
   if (await familyInboxRoute({ req, res, p, auth, json, body, dir: process.env.AGENT_WORLD_FAMILY_DIR || path.join(ROOT, 'data', 'family'), logAction })) return;
   fresh();
   if (await researchRoutes({ req, res, p, write, auth, json, body })) return;
@@ -225,6 +225,17 @@ async function handle(req, res) {
   if (p === '/api/trash' && !write) return json(res, 200, { items: listTrash() });
 
   if (write && req.method === 'POST') {
+    if (p === '/api/settings/name') {                                  // the first-steps guide: save your name
+      if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
+      const name = saveName((await body(req))?.name);
+      return name ? json(res, 200, { ok: true, name }) : json(res, 400, { error: 'Type a name of 1 to 40 letters.' });
+    }
+    if (p === '/api/notify/test') {                                    // the first-steps guide: "Send a test alert"
+      if (auth.remote) return json(res, 403, { error: 'Only from this computer.' });
+      if (!notifier) return json(res, 200, { ok: false, error: 'Alerts are off in data/config.json ("notify").' });
+      await notifier({ title: 'Agent World', message: 'Finished: this is a test alert' });
+      return json(res, 200, { ok: true });
+    }
     if (p === '/api/family/stop') return json(res, 200, { ok: family.stop() });
     if (p === '/api/family/send') {
       const b = await body(req); let open = true;

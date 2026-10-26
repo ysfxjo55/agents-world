@@ -130,6 +130,7 @@ function renderSidebar(list) {
 /* ---------- selection / card ---------- */
 function select(key, fly) {
   state.selected = key; world.setSelected(key);
+  dispatchEvent(new CustomEvent('aw-guide', { detail: { type: 'selected', session: !!(key && find(key)) } }));   // the first-steps guide waits for this
   document.querySelectorAll('.row').forEach(r => r.classList.toggle('sel', r.dataset.key === key));
   if (key && fly) {
     // Old chats with Bella are not buildings (her chat is her HQ and robot): fly there instead of doing nothing
