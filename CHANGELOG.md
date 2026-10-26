@@ -2,6 +2,11 @@
 
 Each version starts with "## <version>". The app shows these lines in its "A new version is ready" banner.
 
+## 0.2.3
+- Faster update checks (every hour and when you open the page) and a "Check for updates" button in the sidebar.
+- Research Lab: Stop now really stops everything on Windows.
+- More Windows fixes, found by the new automatic tests on Windows, Mac and Linux.
+
 ## 0.2.2
 - Test release: checks that "Update now" really updates Agents World.
 
