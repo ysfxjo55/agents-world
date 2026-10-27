@@ -41,3 +41,14 @@ test('the "still open in a Terminal" check matches real claude processes only', 
   assert.equal(re.test('claude --resume other-id'), false);
   assert.equal(re.test('node server/index.js'), false);
 });
+
+test('an interactive claude --resume <id> in a Terminal is noticed (no -p), and marks that session', async () => {
+  const { parseRuns, applyRuns } = await import('../server/runs.js');
+  const r = parseRuns('/Users/me/.local/bin/claude --resume abc-123\nclaude -p --resume def-456 --output-format stream-json\n/bin/zsh -c delegate continue claude:ghi-789');
+  assert.deepEqual([...r.terminalIds], ['abc-123']);
+  assert.deepEqual([...r.claudeIds], ['def-456']);
+  const sessions = [{ tool: 'claude', id: 'abc-123', status: 'sleeping', lastActivity: 1 }, { tool: 'claude', id: 'def-456', status: 'sleeping', lastActivity: 1 }];
+  applyRuns(sessions, r, 1000);
+  assert.equal(sessions[0].inTerminal, true); assert.equal(sessions[0].status, 'sleeping');   // open in a Terminal is not "working"
+  assert.equal(sessions[1].inTerminal, undefined); assert.equal(sessions[1].status, 'working');
+});

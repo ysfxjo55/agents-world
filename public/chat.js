@@ -16,7 +16,8 @@ const S = {
   snap: null, key: null, msgs: [], runs: new Map(), q: '', showOld: ls.get('aw.showOld', '0') === '1',
   attach: [], remote: false, bella: false, bellaMain: null, histEl: null, histCount: 0,
   mode: ls.get('aw.mode', 'readonly'), tool: ls.get('aw.newtool', 'claude'), dir: '', agent: '', loadSeq: 0, lastAct: 0,
-  eng: { bella: 'claude', interstellar: 'codex' },   // which program each manager runs on (from the server: with one engine, both use it)
+  eng: { bella: 'claude', interstellar: 'codex' },
+  failed: new Map(),   // session key -> messages that failed to send (shown under the saved conversation)   // which program each manager runs on (from the server: with one engine, both use it)
 };
 const engOf = (agent) => (agent === 'bella' || agent === 'interstellar' ? S.eng[agent] : 'claude');
 if (!MODES[S.mode] || S.mode === 'full' || S.mode === 'build') S.mode = 'readonly';   // powerful modes are never remembered: pick them again each visit
@@ -129,6 +130,7 @@ function renderTop() {
     const a = el('a', '', 'localhost:4321'); a.href = `http://localhost:4321${location.pathname}${location.search}${location.hash}`; a.target = '_top'; a.style.color = 'inherit'; a.style.fontWeight = '700'; n.append(a, ' to unlock the other modes.'); warn.append(n);
   }
   if (S.bella && S.mode === 'build' && !S.remote) { warn.hidden = false; warn.append(el('div', 'notice', 'Bella herself can edit files in this mode, but not run commands. "Can build and test" only lets the agents she starts run builds and tests.')); }
+  if (s?.inTerminal) { warn.hidden = false; warn.append(el('div', 'notice', 'This conversation is also open in a Terminal window. You can write here, but that Terminal will not see these messages. To keep one clear conversation, continue in one place.')); }
   if (tool === 'opencode') { warn.hidden = false; const n = el('div', 'notice', 'OpenCode uses its own permission settings, not the access mode on the right.'); warn.append(n); }
   else if (s && s.status === 'working' && !S.runs.has(s.key)) { warn.hidden = false; warn.append(el('div', 'notice', 'This session is busy in another window right now. Messages can interleave.')); }
 }
@@ -214,7 +216,7 @@ async function loadTranscript(key, keepScroll) {
   const seq = ++S.loadSeq;
   const r = await fetch('/api/chat/transcript/' + encodeURIComponent(key)).then(r => r.json()).catch(() => null);
   if (!r || seq !== S.loadSeq || S.key !== key || S.runs.has(key)) return;
-  S.msgs = r.messages || []; renderThread(); if (!keepScroll) toBottom(false);
+  S.msgs = (r.messages || []).concat(S.failed.get(key) || []); renderThread(); if (!keepScroll) toBottom(false);   // a failed send was never saved: keep it and its error on screen
 }
 function openSession(key, opts = {}) {
   S.bella = !!opts.bella || (!!key && key === S.bellaMain);
@@ -293,6 +295,11 @@ function finish(run) {
   run.live.live = false;
   for (const b of run.live.blocks) if (b.type === 'tool' && b.result == null) b.result = '';
   S.runs.delete(run.key); if (S.runs.get('__draft__') === run) S.runs.delete('__draft__');
+  if (run.key && run.live.blocks.some(b => b.type === 'error')) {     // keep the message you wrote and the red error, with a hint
+    const i = run.msgs.indexOf(run.live), mine = i > 0 ? run.msgs[i - 1] : null;
+    run.live.blocks.push({ type: 'notice', text: 'This message was not saved in the conversation. The red text above says why. If this chat is also open in a Terminal, continue it there, or start a new chat.' });
+    S.failed.set(run.key, [...(S.failed.get(run.key) || []), ...(mine ? [mine] : []), run.live]);
+  } else if (run.key) S.failed.delete(run.key);
   paintLive(run); setBusy(); renderSide(); guide({ type: 'run-done', key: run.key });
   if (S.key === run.key) setTimeout(() => loadTranscript(run.key, true), 700);       // swap in the saved version of the conversation
 }
