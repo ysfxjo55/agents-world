@@ -23,6 +23,7 @@ import { config, saveName, saveSettings } from './config.js';
 import { detectEngines, engineSummary, setEngines, currentEngines, agentShown } from './engines.js';
 import { createUpdater, previewState, RESTART_CODE } from './updater.js';
 import { readAll, saveOne, resetOne } from './instructions.js';
+import { boardRoute } from './board.js';
 import { checkRequest, originAllowed, HttpError, safeDecode, ownTailnetIps } from './auth.js';
 import { body, rawBody, resolveCwd, isTodayChat, refreshUserPath, inlineScriptHashes } from './util.js';
 import { resolveDownload } from './files.js';
@@ -178,7 +179,7 @@ async function handle(req, res) {
 
   const url = new URL(req.url, `http://${req.headers.host}`), p = url.pathname;
   if (p.startsWith('/life/')) { const f = p.slice(5); if (/^\/(board\.html|localdb\.js)$/.test(f)) return proxyLife(req, res, f + url.search); return json(res, 404, { error: 'not found' }); }
-  if (/^\/api\/(board)\//.test(p)) return proxyLife(req, res, p + url.search);
+  if (await boardRoute({ req, res, p, write, auth, json, readBody: body })) return;   // the Tasks & habits board, saved in data/board
 
   if (await modelRouterRoute({ req, res, p, auth, json })) return;
   if (usageRoute({ req, res, p, url, json })) return;

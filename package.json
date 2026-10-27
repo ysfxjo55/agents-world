@@ -1,6 +1,6 @@
 {
   "name": "agents-world",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Your AI coding agents as a living 3D world",
   "type": "module",
   "private": true,

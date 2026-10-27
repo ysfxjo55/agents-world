@@ -2,6 +2,9 @@
 
 Each version starts with "## <version>". The app shows these lines in its "A new version is ready" banner.
 
+## 0.2.8
+- New: Tasks & habits board (Today, Board, Sessions, reminders). Open it with Board in the World toolbar or in the Chat sidebar. Your tasks stay on your computer.
+
 ## 0.2.7
 - With only Antigravity (or OpenCode), Bella, Interstellar and the Family chat are hidden, with a tip: Add Claude Code to get Bella, or Codex to get Interstellar.
 

@@ -65,6 +65,15 @@ On your first visit a short guide opens. You learn the app by doing each step yo
 
 To check that alerts work: `npm run test-notify`. On macOS, if no banner appears, allow notifications for "Script Editor" in System Settings > Notifications. On Windows, check that notifications are on in Settings > System > Notifications.
 
+## Tasks & habits board
+A simple personal board, opened with **Board** in the World toolbar or **Tasks & habits board** in the Chat sidebar:
+- **Today:** your habits for today (tick them off), what's in progress and what's due this week.
+- **Board:** tasks in four columns (Later, To do, In progress, Done) with coloured areas. Drag cards between columns; open a card for steps, notes and a due date. **Edit areas** renames, recolours, adds or removes areas (it starts with Work, Study, Personal).
+- **Sessions:** log your focused time per day, with a 14-day chart, a "to be continued" list and notes.
+- **Reminders:** optional random nudges about unfinished habits or tasks while the board is open; your browser can also show them as notifications.
+
+Everything is saved as small JSON files in `data/board/` on your computer (git ignores it). You or an agent can edit them too; the page picks up changes within a few seconds. Through Tailscale the board is read-only.
+
 ## Updates
 Agents World checks GitHub when it starts, every hour, and when you open the page (at most once every 10 minutes). **Check for updates** in the sidebar checks right away. When a newer version is ready, a small box shows what's new with **Update now** and **Later**. Update now installs it and restarts the app by itself; the page reloads.
 - Installed with `git clone`: it runs `git pull` (and `npm install` when needed). If you changed app files yourself, it stops and tells you.

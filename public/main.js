@@ -308,7 +308,8 @@ $('showAll').checked = state.showAll;
 $('showAll').onchange = (e) => { state.showAll = e.target.checked; ls.set('aw.showAll', state.showAll ? '1' : '0'); if (state.snap) apply(state.snap); };
 setInterval(() => { if (state.snap) { renderSidebar(visible(state.snap)); refreshCard(); } }, 20000);
 
-$('chatBtn').innerHTML = icon('chat', 16) + ' Chat'; setThemeBtn(); connect();
+$('chatBtn').innerHTML = icon('chat', 16) + ' Chat'; $('boardBtn').innerHTML = icon('life', 16) + ' Board';
+$('boardBtn').onclick = () => openApp('/board.html', 'Tasks & habits board'); setThemeBtn(); connect();
 fetch('/api/config').then(r => r.json()).then(c => {
   if (c.remote) { const a = document.createElement('a'); a.id = 'remotePill'; a.href = 'http://localhost:4321/'; a.target = '_top'; a.textContent = 'Read-only link. On the computer, open localhost:4321 to edit'; $('toolbar').prepend(a); }
   state.links = c.links || []; state.today = !!c.today; state.eng = c.engines; if (state.snap) renderSidebar(visible(state.snap)); }).catch(() => {});
