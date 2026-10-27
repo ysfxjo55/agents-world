@@ -48,3 +48,10 @@ test('settings are saved readable only by you (they can hold your ntfy topic)', 
   if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);   // Windows has no Unix file permissions
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('the version in package.json has its own section at the top of CHANGELOG.md (the release uses it)', () => {
+  const v = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  const lock = JSON.parse(fs.readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
+  const top = fs.readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8').match(/^## (\S+)/m)?.[1];
+  assert.equal(top, v); assert.equal(lock.version, v); assert.equal(lock.packages[''].version, v);
+});

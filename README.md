@@ -4,6 +4,8 @@
 
 # Agents World
 
+[![check](https://github.com/ysfxjo55/agents-world/actions/workflows/check.yml/badge.svg)](https://github.com/ysfxjo55/agents-world/actions/workflows/check.yml)
+
 **See all your AI sessions in one place, and get told the moment one finishes.**
 
 Agents World is a local web app for people who use AI coding agents. It finds your **Claude Code**, **Codex** and **OpenCode** sessions (also the ones you started in a normal terminal) and shows them as a small 3D world: every project is an island, every session a building, and a robot works, waits or sleeps depending on what the agent is doing. When a session finishes, you get a desktop notification. There is also a chat page to read and continue any session, two manager agents (Bella and Interstellar) who can start other agents for you, an overnight Research Lab and an optional Today page.

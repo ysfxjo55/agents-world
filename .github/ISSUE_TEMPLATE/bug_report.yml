@@ -1,0 +1,32 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations: { required: true }
+  - type: dropdown
+    id: os
+    attributes:
+      label: Computer
+      options: [Windows, macOS, Linux]
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Agents World version
+      description: The first line when you start it says agents-world@x.y.z
+    validations: { required: true }
+  - type: input
+    id: engines
+    attributes:
+      label: AI programs
+      description: Output of claude --version, codex --version or agy --version (the ones you use)
+  - type: textarea
+    id: shots
+    attributes:
+      label: Screenshot or error text
+      description: A screenshot of the page, and any red lines from the Terminal/PowerShell window or the browser console (F12). Remove anything private first.

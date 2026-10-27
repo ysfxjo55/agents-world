@@ -1,0 +1,27 @@
+# When the version in package.json changes on main, publish it: a tag vX.Y.Z and a GitHub Release whose notes are
+# that version's lines from CHANGELOG.md. The in-app updater does not need this; it is for people reading the repo.
+name: release
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write                         # only this job may create tags and releases
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+      - name: Release the version in package.json if it has no tag yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if git ls-remote --exit-code --tags origin "refs/tags/v$v" >/dev/null; then echo "v$v is already released"; exit 0; fi
+          awk -v v="$v" '/^## /{p=($2==v)} p && !/^## /' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "CHANGELOG.md has no section for $v"; exit 1; fi
+          gh release create "v$v" --target "$GITHUB_SHA" --title "v$v" --notes-file notes.md

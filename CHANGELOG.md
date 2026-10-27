@@ -2,6 +2,11 @@
 
 Each version starts with "## <version>". The app shows these lines in its "A new version is ready" banner.
 
+## 0.2.9
+- Security: other websites can no longer send commands to Agents World, even through a browser that hides where a request comes from.
+- Security: updates are only installed when they are newer and safe to unpack, and without running extra install scripts.
+- Your settings file is now readable only by you.
+
 ## 0.2.8
 - New: Tasks & habits board (Today, Board, Sessions, reminders). Open it with Board in the World toolbar or in the Chat sidebar. Your tasks stay on your computer.
 
