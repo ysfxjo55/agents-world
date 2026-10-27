@@ -333,7 +333,7 @@ function apply(snap) {
   const names = new Map(snap.projects.map(p => [p.path, p.name]));
   for (const s of snap.sessions) s.projectName = names.get(s.projectPath);
   const first = !S.snap; S.snap = snap;
-  $('bellaBtn').hidden = !snap.bella; document.querySelector('.seg a[href="/family.html"]').hidden = !(snap.bella && snap.interstellar);   // Claude only: Bella; Codex only: Interstellar; the family chat needs both
+  $('bellaBtn').hidden = !snap.bella; $('noManager').hidden = !!(snap.bella || snap.interstellar) || !S.engAny;   // only Antigravity or OpenCode: a tip instead of the managers document.querySelector('.seg a[href="/family.html"]').hidden = !(snap.bella && snap.interstellar);   // Claude only: Bella; Codex only: Interstellar; the family chat needs both
   if (first) { fillSelects(); const k = decodeURIComponent(location.hash.slice(1)), ag = P.get('agent'); if (ag === 'bella' && snap.bella) { openBella(); } else if (ag && snap.agents?.some(a => a.name === ag)) { newChat(ag); } else if (k && find(k)) openSession(k); else renderThread(); }
   renderSide(); renderTop(); guide({ type: 'status', sessions: snap.sessions });
   const s = S.key && find(S.key);       // a terminal elsewhere moved this session on: show it live
@@ -368,6 +368,7 @@ new MutationObserver(watchApp).observe($('avFrame'), { attributes: true, attribu
 
 fetch('/api/config').then(r => r.json()).then(cfg => {
   const e = cfg.engines || {}; for (const a of ['bella', 'interstellar']) if (e[a]) S.eng[a] = e[a];
+  S.engAny = !!e.any; if (S.snap) $('noManager').hidden = !!(S.snap.bella || S.snap.interstellar) || !S.engAny;
   if (e.found && !e.found[S.tool]?.installed) { const t = ['claude', 'codex', 'antigravity', 'opencode'].find(x => e.found[x]?.installed); if (t) { S.tool = t; if (!S.key) renderThread(); } }   // a new chat starts on a program you have
   $('todayBtn').hidden = !cfg.today;
   if (cfg.remote) { S.remote = true; S.mode = 'readonly'; fillSelects(); renderTop(); } const box = $('linksList'); for (const l of cfg.links || []) { const b = el('button', ''); b.innerHTML = `<span class="ic">${icon(l.icon === 'chess' ? 'chess' : 'link', 17)}</span>`; b.append(l.name); const ch = el('span', 'chev', '↗'); b.append(ch); b.onclick = () => window.open(l.url, '_blank', 'noopener'); box.append(b); } }).catch(() => {});

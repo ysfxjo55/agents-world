@@ -59,10 +59,11 @@ export function engineSummary(found, settings = {}) {
   return { found, bella: engineFor('bella', found, settings), interstellar: engineFor('interstellar', found, settings), any: Object.values(found).some(e => e.installed) };
 }
 
-/** Is this manager shown at all? Yes when it has an engine. With neither Claude Code nor Codex (nothing set up yet, or only OpenCode) both stay, as before. */
+/** Is this manager shown at all? Only when its engine is installed (Bella: Claude Code, Interstellar: Codex).
+ * With only Antigravity or OpenCode, both are hidden and the page shows a tip. With no AI program at all, nothing is hidden (the page says what to install). */
 export function agentShown(agent, eng = current) {
   const f = /** @type {Record<string, { installed?: boolean }>} */ (eng.found || {});
-  if (!f.claude?.installed && !f.codex?.installed) return true;
+  if (!Object.values(f).some(e => e?.installed)) return true;
   return !!eng[agent];
 }
 

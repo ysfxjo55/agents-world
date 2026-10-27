@@ -257,3 +257,4 @@ body.embed #researchBtn{display:none}
 .ins-row .ins-save{background:#e8e8ee;color:#151518;border-color:#e8e8ee;font-weight:600}
 .ins-msg{color:#a8a8b2;font-size:13px;margin:8px 0 0}.ins-msg:empty{display:none}
 .ins-card :focus-visible{outline:2px solid #8ab4ff;outline-offset:2px}
+#noManager.tip{margin:4px 10px 8px;font-size:12px;line-height:1.4;color:#a8a8b2}

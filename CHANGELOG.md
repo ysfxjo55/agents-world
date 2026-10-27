@@ -2,6 +2,9 @@
 
 Each version starts with "## <version>". The app shows these lines in its "A new version is ready" banner.
 
+## 0.2.7
+- With only Antigravity (or OpenCode), Bella, Interstellar and the Family chat are hidden, with a tip: Add Claude Code to get Bella, or Codex to get Interstellar.
+
 ## 0.2.6
 - New: Google Antigravity CLI (agy). Its conversations show up in the world, and you can chat with it from the Chat page. Works with a free Google account.
 

@@ -86,6 +86,9 @@ function renderSidebar(list) {
     const em = el('span', 'em'); em.innerHTML = badge('interstellar', '#ffb347'); b.append(em, el('span', 't', 'Interstellar'), el('span', 'a', a.status === 'working' ? 'working' : 'ready'));
     b.onclick = () => { select('interstellar', true); closeSide(); }; g.append(b); box.append(g);
   }
+  if (!state.snap?.bella && !state.snap?.interstellar && state.eng?.any) {   // only Antigravity or OpenCode: no manager yet, say how to get one
+    const g = el('div', 'grp'); g.append(el('p', 'tip', 'Add Claude Code to get Bella, or Codex to get Interstellar.')); box.append(g);
+  }
   if (state.snap?.bella && state.snap?.interstellar) {   // the family chat needs both managers
     const g = el('div', 'grp'), b = el('button', 'row');
     const em = el('span', 'em'); em.innerHTML = badge('chat', '#ffb347');

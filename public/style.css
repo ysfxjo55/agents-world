@@ -223,3 +223,4 @@ body.panel-open #chatpanel.wide~#toolbar{right:14px}
 
 .note3d{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(460px,85%);background:var(--panel);color:var(--muted);padding:14px 18px;border-radius:12px;line-height:1.45;font-size:14px;z-index:2}
 .linkbtn{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 0 0;display:block}
+.tip{margin:4px 12px 8px;font-size:12px;line-height:1.4;color:var(--muted)}

@@ -154,7 +154,11 @@ test('one engine: only its own manager is shown and may chat', async () => {
     setEngines(engineSummary({ claude: { installed: true }, codex: { installed: true } }));
     assert.deepEqual([agentShown('bella'), agentShown('interstellar')], [true, true]);
     setEngines(engineSummary({ opencode: { installed: true } }));
-    assert.deepEqual([agentShown('bella'), agentShown('interstellar')], [true, true]);   // nothing usable yet: nothing is hidden
+    assert.deepEqual([agentShown('bella'), agentShown('interstellar')], [false, false]);   // only OpenCode: no manager
+    setEngines(engineSummary({ antigravity: { installed: true } }));
+    assert.deepEqual([agentShown('bella'), agentShown('interstellar')], [false, false]);   // only Antigravity: no manager, a tip instead
+    setEngines(engineSummary({}));
+    assert.deepEqual([agentShown('bella'), agentShown('interstellar')], [true, true]);     // nothing installed at all: nothing is hidden
     assert.match(chatAccessError({ tool: 'codex', mode: 'readonly', agent: 'architect', remote: false }).error, /Claude Code/);
   } finally { setEngines(before); }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-p-'));
