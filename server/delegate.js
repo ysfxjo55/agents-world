@@ -56,14 +56,15 @@ export function ensureWorktree(dir, repoRoot, io = {}) {
   return { made: true, branch };
 }
 
-export function startJob({ agent, tool, cwd, text, mode, title, sessionId = null, temp = false, onTempDone = null }, runs, kick) {
+export function startJob({ agent, tool, cwd, text, mode, title, sessionId = null, temp = false, onTempDone = null, by = 'you' }, runs, kick) {   // by: 'bella' only when Bella herself asked
   const id = crypto.randomUUID().slice(0, 8);
   const job = { id, agent: agent || null, tool, resumed: !!sessionId, temp: !!temp, status: 'running', key: null, text: '', error: null, startedAt: Date.now(), finishedAt: null };
   jobs.set(id, job);
   const label = `${temp ? 'Quick: ' : ''}${agent || (tool === 'codex' ? 'Codex' : 'OpenCode')}: ${title || text.split('\n')[0]}`.slice(0, 70);
   const emit = (ev) => {
     if (ev.t === 'start') { job.key = ev.key; if (sessionId) return;   // an old session keeps its place and its name
-      try { recordDelegation(ev.key, { by: 'bella', agent: agent || null, job: id }); setAlias(ev.key, label); } catch (e) { console.error('delegation record:', e.message); } }
+      // the world puts only by:'bella' sessions at Bella HQ
+      try { recordDelegation(ev.key, { by, agent: agent || null, job: id }); setAlias(ev.key, label); } catch (e) { console.error('delegation record:', e.message); } }
     else if (ev.t === 'blocks') { const t = ev.blocks.filter(b => b.type === 'text').map(b => b.text).join('\n\n'); if (t) job.text = t; }
     else if (ev.t === 'error') job.error = ev.text;
     else if (ev.t === 'done') { job.status = ev.ok ? 'done' : 'error'; if (ev.error) job.error = ev.error; }

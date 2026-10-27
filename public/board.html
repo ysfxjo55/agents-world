@@ -3,6 +3,7 @@
 <head>
 <script>window.LIFE_DB="board"</script>
 <script src="localdb.js"></script>
+<script src="board-clean.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tasks &amp; habits board · Agents World</title>
@@ -242,7 +243,7 @@ function writeSoon(path,get){
 }
 function remove(path){if(!db)return;chains[path]=(chains[path]||Promise.resolve()).then(()=>db.doc(path).delete()).catch(onErr)}
 
-function areaOf(id){return (S.cfg.areas||[]).find(a=>a.id===id)||{id:id||'personal',name:id||'Personal',color:'#8C93A3'}}
+function areaOf(id){return (S.cfg.areas||[]).find(a=>a.id===id)||{id:'personal',name:'Personal',color:'#8C93A3'}}
 function day(date){return S.days[date]||{date,habits:{},sessions:[],carry:[],note:''}}
 function editDay(date,fn,soon){
   const d=clone(day(date));d.habits=d.habits||{};d.sessions=d.sessions||[];d.carry=d.carry||[];
@@ -390,7 +391,7 @@ function viewSessions(){
   const date=S.date;
   if(db&&!S.days[date]&&!fetched.has(date)){
     fetched.add(date);
-    db.doc('days/'+date).get().then(s=>{if(s.exists&&!S.days[date]){S.days[date]=clone(s.data());refresh()}}).catch(()=>{});
+    db.doc('days/'+date).get().then(s=>{if(s.exists&&!S.days[date]){S.days[date]=BoardClean.day(clone(s.data()));refresh()}}).catch(()=>{});
   }
   const d=day(date);const td=todayStr();
   // 14-day strip ending at max(today, selected)
@@ -628,16 +629,16 @@ setInterval(()=>{const t=todayStr();if(t!==lastDay){if(S.date===lastDay)S.date=t
   db=d;
   db.collection('tasks').onSnapshot(snap=>{
     const local={};S.tasks.forEach(t=>local[t.id]=t);
-    S.tasks=snap.docs.map(x=>dirty.has('tasks/'+x.id)&&local[x.id]?local[x.id]:Object.assign({id:x.id},clone(x.data())));
+    S.tasks=snap.docs.map(x=>dirty.has('tasks/'+x.id)&&local[x.id]?local[x.id]:Object.assign(BoardClean.task(clone(x.data())),{id:x.id}));   // never trust what is in the files
     refresh();
   },onErr);
   db.doc('config/settings').onSnapshot(s=>{
     if(dirty.has('config/settings'))return;
-    if(s.exists){const c=clone(s.data());c.areas=c.areas&&c.areas.length?c.areas:FALLBACK.areas;c.habits=c.habits||[];S.cfg=c}
+    if(s.exists){const c=BoardClean.cfg(clone(s.data()));c.areas=c.areas&&c.areas.length?c.areas:FALLBACK.areas;c.habits=c.habits||[];S.cfg=c}
     refresh();
   },onErr);
   db.collection('days').orderBy('date','desc').limit(60).onSnapshot(snap=>{
-    snap.docs.forEach(x=>{if(!dirty.has('days/'+x.id))S.days[x.id]=clone(x.data())});
+    snap.docs.forEach(x=>{if(!dirty.has('days/'+x.id))S.days[x.id]=BoardClean.day(clone(x.data()))});
     refresh();
   },onErr);
 });

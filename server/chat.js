@@ -87,6 +87,7 @@ export function bellaCodexPrompt(text, sessionId, remote = false, { agentsDir = 
 }
 export function chatAccessError({ tool, mode, agent, remote }) {
   if (mode !== 'readonly' && remote) return { status: 403, error: 'Through Tailscale only read-only chat is allowed. Use this computer for editing or full access.' };
+  if (tool === 'opencode' && remote) return { status: 403, error: 'OpenCode uses its own permissions and cannot be held to read-only, so it is not available through Tailscale. Use this computer, or pick Claude Code or Codex.' };
   const eng = currentEngines();
   if ((agent === 'bella' || agent === 'interstellar') && !eng[agent]) return { status: 400, error: 'Install and log in to Claude Code or Codex first.' };
   if (agent === 'interstellar' && tool !== eng.interstellar) return { status: 400, error: `Interstellar runs on ${ENGINE_NAMES[eng.interstellar]} here.` };
@@ -122,6 +123,8 @@ const runTokens = new Map();
 export const issueRunToken = (mode) => { const t = crypto.randomBytes(16).toString('hex'); runTokens.set(t, mode); return t; };
 export const releaseRunToken = (t) => runTokens.delete(t);
 export const maxModeForToken = (t) => runTokens.get(String(t || '')) || 'readonly';
+/** Only a call that carries one of Bella's live run tokens really comes from Bella (an agent or a Terminal could call delegate too). */
+export const isBellaToken = (t) => runTokens.has(String(t || ''));
 
 export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [], addDirs = [], remote = false, usageSource = 'chat' }, emitCallback, onClose) {
   const originalText = text;   // what you typed, before attachments notes are added (kept in Antigravity's local log)

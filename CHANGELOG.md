@@ -2,6 +2,11 @@
 
 Each version starts with "## <version>". The app shows these lines in its "A new version is ready" banner.
 
+## 0.2.10
+- Security: the board ignores unsafe values in its data files, so an edited file cannot put code into the page.
+- Security: OpenCode chats are not offered through Tailscale, because OpenCode cannot be held to read-only.
+- Sessions started with the delegate tool from a Terminal or another agent now show on their own folder's island, not at Bella HQ. Only Bella's own agents go there.
+
 ## 0.2.9
 - Security: other websites can no longer send commands to Agents World, even through a browser that hides where a request comes from.
 - Security: updates are only installed when they are newer and safe to unpack, and without running extra install scripts.

@@ -55,3 +55,12 @@ test('the version in package.json has its own section at the top of CHANGELOG.md
   const top = fs.readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8').match(/^## (\S+)/m)?.[1];
   assert.equal(top, v); assert.equal(lock.version, v); assert.equal(lock.packages[''].version, v);
 });
+
+test('OpenCode cannot be held to read-only, so it is refused through Tailscale; delegate only calls Bella "Bella" with her run token', async () => {
+  const { chatAccessError, issueRunToken, releaseRunToken, isBellaToken } = await import('../server/chat.js');
+  assert.match(chatAccessError({ tool: 'opencode', mode: 'readonly', remote: true, agent: null }).error, /not available through Tailscale/);
+  assert.equal(chatAccessError({ tool: 'opencode', mode: 'readonly', remote: false, agent: null }), null);
+  const t = issueRunToken('readonly');
+  assert.equal(isBellaToken(t), true); assert.equal(isBellaToken('made-up'), false); assert.equal(isBellaToken(undefined), false);
+  releaseRunToken(t); assert.equal(isBellaToken(t), false);
+});

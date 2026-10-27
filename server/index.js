@@ -16,7 +16,7 @@ import { OPENCODE_DIR } from './sources/opencode.js';
 import { AGENTS_DIR } from './agents.js';
 import { familyInboxRoute } from './family-inbox.js';
 import { FamilyChat } from './family.js';
-import { startRun, MODES, INTERSTELLAR_DIR, chatAccessError, maxModeForToken } from './chat.js';
+import { startRun, MODES, INTERSTELLAR_DIR, chatAccessError, maxModeForToken, isBellaToken } from './chat.js';
 import { trashSession, listTrash, restoreSession, emptyTrash } from './trash.js';
 import { claudeProcessPattern, sessionBusy, liveRuns } from './runs.js';
 import { config, saveName, saveSettings } from './config.js';
@@ -334,7 +334,7 @@ async function handle(req, res) {
         const ok2 = allowedDelegation({ requestedMode: mode, maxMode, tool: rr.tool }); if (!ok2.ok) return json(res, 403, { error: ok2.error });
         if (!rr.cwd || !fs.existsSync(rr.cwd) || !SAFE_ID.test(rr.sessionId)) return json(res, 400, { error: 'cannot continue that session (folder missing)' });
         if (runs.size >= 3) return json(res, 429, { error: 'Three agents are already running. Wait for one to finish.' });
-        const job = startJob({ ...rr, text, mode, title: '' }, runs, kick);
+        const job = startJob({ ...rr, text, mode, title: '', by: isBellaToken(req.headers['x-bella-run-token']) ? 'bella' : 'you' }, runs, kick);
         return json(res, 200, { job: job.id, key: s.key, continued: true });
       }
       let agent = null;
@@ -346,7 +346,7 @@ async function handle(req, res) {
       if (!cwd || !fs.existsSync(cwd)) return json(res, 400, { error: 'unknown folder (use a project folder Bella already knows)' });
       if (runs.size >= 3) return json(res, 429, { error: 'Three agents are already running. Wait for one to finish.' });
       const temp = b.temp === true;
-      const job = startJob({ agent, tool, cwd, text, mode, title: typeof b.title === 'string' ? b.title.slice(0, 60) : '', temp, onTempDone: temp ? tempCleanup : null }, runs, kick);
+      const job = startJob({ agent, tool, cwd, text, mode, title: typeof b.title === 'string' ? b.title.slice(0, 60) : '', temp, onTempDone: temp ? tempCleanup : null, by: isBellaToken(req.headers['x-bella-run-token']) ? 'bella' : 'you' }, runs, kick);   // started from a Terminal or another agent: its own folder's island, not Bella HQ
       return json(res, 200, { job: job.id });
     }
     if (p === '/api/upload') {
