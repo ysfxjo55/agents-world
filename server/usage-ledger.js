@@ -61,13 +61,17 @@ export class RunUsage {
         // not a sum of cumulative snapshots. Input already includes cache reads.
         this.aggregate = entry;
       }
+    } else if (this.row.tool === 'antigravity' && event.event === 'result') {   // agy: the final "result" carries the totals of the turn
+      const u = event.result?.usage || {}, read = count(u.cache_read_tokens), fresh = count(u.input_tokens), out = count(u.output_tokens), think = count(u.thinking_tokens);
+      this.aggregate = { ...empty(), inputTokens: fresh, cachedInputTokens: read, outputTokens: out === null ? null : out + (think ?? 0), reasoningTokens: think };
+      if (event.result?.status && event.result.status !== 'SUCCESS') this.failed = true;
     } else if (this.row.tool === 'opencode' && event.type === 'step_finish') {
       const p = event.part || {}, t = p.tokens || {};
       const fresh = count(t.input), read = count(t.cache?.read), write = count(t.cache?.write), visible = count(t.output), reasoning = count(t.reasoning);
       this.steps.set(p.id || p.messageID || `step:${this.steps.size}`, { inputTokens: fresh === null ? null : fresh + (read ?? 0) + (write ?? 0), cachedInputTokens: read, cacheWriteTokens: write, outputTokens: visible === null ? null : visible + (reasoning ?? 0), reasoningTokens: reasoning, estimatedUsd: count(p.cost) });
       this.row.model = id(p.modelID) || this.row.model;
     }
-    this.row.sessionId = id(event.thread_id || event.sessionID || event.session_id) || this.row.sessionId;
+    this.row.sessionId = id(event.thread_id || event.sessionID || event.session_id || event.conversation_id) || this.row.sessionId;
   }
   finish({ status = 'completed', sessionId = undefined, endedAt = Date.now() } = {}) {
     if (this.closed) return;
@@ -99,7 +103,7 @@ export function readUsage(file = process.env.AGENT_WORLD_USAGE_FILE || DEFAULT_F
     for (const line of lines) {
       try {
         const row = JSON.parse(line);
-        if (!id(row.id) || seen.has(row.id) || !['claude', 'codex', 'opencode'].includes(row.tool) || !Number.isFinite(row.startedAt) || !Number.isFinite(row.endedAt) || !Number.isFinite(new Date(row.startedAt).getTime()) || !Number.isFinite(new Date(row.endedAt).getTime())) continue;
+        if (!id(row.id) || seen.has(row.id) || !['claude', 'codex', 'opencode', 'antigravity'].includes(row.tool) || !Number.isFinite(row.startedAt) || !Number.isFinite(row.endedAt) || !Number.isFinite(new Date(row.startedAt).getTime()) || !Number.isFinite(new Date(row.endedAt).getTime())) continue;
         seen.add(row.id);
         const safe = { id: row.id, accountingVersion: count(row.accountingVersion), usageBasis: id(row.usageBasis), counterBefore: safeCodexCounters(row.counterBefore), counterAfter: safeCodexCounters(row.counterAfter), tool: row.tool, source: ['chat', 'delegation', 'family', 'research', 'today'].includes(row.source) ? row.source : 'chat', agent: id(row.agent), model: id(row.model), sessionId: id(row.sessionId), contextId: id(row.contextId), attempt: count(row.attempt), startedAt: row.startedAt, endedAt: row.endedAt, status: ['completed', 'failed', 'stopped'].includes(row.status) ? row.status : 'failed', ...Object.fromEntries(FIELDS.map(k => [k, count(row[k])])) };
         records.push(repairLegacyCodexUsage(safe));
@@ -133,7 +137,7 @@ export function usageRoute({ req, res, p, url, json }) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'GET') { json(res, 405, { error: 'Use GET.' }); return true; }
   const period = url.searchParams.get('days') || '7', tool = url.searchParams.get('tool') || 'all';
-  if (!['1', '7', '30', '0'].includes(period) || !['all', 'claude', 'codex', 'opencode'].includes(tool)) { json(res, 400, { error: 'Invalid usage filter.' }); return true; }
+  if (!['1', '7', '30', '0'].includes(period) || !['all', 'claude', 'codex', 'opencode', 'antigravity'].includes(tool)) { json(res, 400, { error: 'Invalid usage filter.' }); return true; }
   try { const data = readUsage(); json(res, 200, { ...summarizeUsage(data.records, { days: Number(period), tool }), truncated: data.truncated }); }
   catch { json(res, 503, { error: 'Usage history could not be read. Try again.' }); }
   return true;

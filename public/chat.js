@@ -4,7 +4,8 @@ const $ = (id) => document.getElementById(id);
 const ls = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const TOOLS = { claude: 'Claude Code', opencode: 'OpenCode', codex: 'Codex' };
+const TOOLS = { claude: 'Claude Code', opencode: 'OpenCode', codex: 'Codex', antigravity: 'Antigravity' };
+const SHORT = { claude: 'CC', codex: 'Codex', opencode: 'OC', antigravity: 'AGY' };   // the small label on a row
 const MODES = { readonly: 'Read-only', edits: 'Can edit files', build: 'Can build and test', full: 'Full access ⚠' };
 const MODE_HELP = { readonly: 'Can look at files and search the web. It never changes your project files. Bella can still save to her own memory and the family folder.', edits: 'Can also create and edit files', build: 'Can also run git, npm and node to build and test (needed for the builder agent). Powerful: node can run any script.', full: 'Can run any command and change anything, without asking' };
 const isMobile = () => matchMedia('(max-width:760px)').matches;
@@ -75,7 +76,7 @@ function renderSide() {
     if (S.trash.length) { const e = el('button', 'danger', 'Empty Trash'); e.onclick = async () => { if (confirm(`Permanently delete ${S.trash.length} chat${S.trash.length > 1 ? 's' : ''}? This cannot be undone.`)) { await post('/api/trash/empty', { confirm: true }); loadTrash(); } }; bar.append(e); }
     box.append(bar);
     for (const t of S.trash) {
-      const r = el('div', 'row'); r.append(el('span', 't', t.title), el('span', 'tb', t.tool === 'codex' ? 'Codex' : t.tool === 'opencode' ? 'OC' : 'CC'));
+      const r = el('div', 'row'); r.append(el('span', 't', t.title), el('span', 'tb', SHORT[t.tool] || t.tool));
       const b = el('button', 'mini', 'Restore'); b.onclick = async () => { const x = await post('/api/trash/restore', { id: t.id }); if (!x.ok) alert('Could not restore: ' + x.error); loadTrash(); }; r.append(b);
       r.title = `${t.cwd}\nDeleted ${ago(t.deletedAt)}`; box.append(r);
     }
@@ -89,7 +90,7 @@ function renderSide() {
         const r = el('div', 'row' + (s.key === S.key ? ' sel' : '') + (s.archived ? ' arch' : '')); r.title = `${s.projectName} · ${TOOLS[s.tool]}`;
         const busy = S.runs.has(s.key) ? 'working' : s.status;
         if (S.sel) { const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = S.sel.has(s.key); cb.onclick = (e) => e.stopPropagation(); cb.onchange = () => { cb.checked ? S.sel.add(s.key) : S.sel.delete(s.key); renderSelBar(); }; r.append(cb); }
-        r.append(el('span', 't', s.title), el('i', `dot ${busy}`), ...(s.tool !== 'claude' ? [el('span', 'tb', s.tool === 'codex' ? 'Codex' : 'OC')] : []));
+        r.append(el('span', 't', s.title), el('i', `dot ${busy}`), ...(s.tool !== 'claude' ? [el('span', 'tb', SHORT[s.tool] || s.tool)] : []));
         if (!S.sel) { const mb = el('button', 'more', '⋯'); mb.title = 'More'; mb.onclick = (e) => { e.stopPropagation(); openMenu(mb, s); }; r.append(mb); }
         r.onclick = () => { if (!S.sel && s.key === S.bellaMain) { openBella(); closeSide(); return; } if (S.sel) { const cb = r.querySelector('input'); cb.checked = !cb.checked; cb.onchange(); return; } openSession(s.key); closeSide(); };
         d.append(r);
@@ -131,6 +132,7 @@ function renderTop() {
   }
   if (S.bella && S.mode === 'build' && !S.remote) { warn.hidden = false; warn.append(el('div', 'notice', 'Bella herself can edit files in this mode, but not run commands. "Can build and test" only lets the agents she starts run builds and tests.')); }
   if (s?.inTerminal) { warn.hidden = false; warn.append(el('div', 'notice', 'This conversation is also open in a Terminal window. You can write here, but that Terminal will not see these messages. To keep one clear conversation, continue in one place.')); }
+  if (tool === 'antigravity') { warn.hidden = false; warn.append(el('div', 'notice', 'Antigravity uses its own modes: Read-only = plan mode in its sandbox, Can edit files = accept edits in its sandbox, Can build and test = accept edits, Full access = everything without asking.')); }
   if (tool === 'opencode') { warn.hidden = false; const n = el('div', 'notice', 'OpenCode uses its own permission settings, not the access mode on the right.'); warn.append(n); }
   else if (s && s.status === 'working' && !S.runs.has(s.key)) { warn.hidden = false; warn.append(el('div', 'notice', 'This session is busy in another window right now. Messages can interleave.')); }
 }
@@ -366,7 +368,7 @@ new MutationObserver(watchApp).observe($('avFrame'), { attributes: true, attribu
 
 fetch('/api/config').then(r => r.json()).then(cfg => {
   const e = cfg.engines || {}; for (const a of ['bella', 'interstellar']) if (e[a]) S.eng[a] = e[a];
-  if (e.found && !e.found[S.tool]?.installed) { const t = ['claude', 'codex', 'opencode'].find(x => e.found[x]?.installed); if (t) { S.tool = t; if (!S.key) renderThread(); } }   // a new chat starts on a program you have
+  if (e.found && !e.found[S.tool]?.installed) { const t = ['claude', 'codex', 'antigravity', 'opencode'].find(x => e.found[x]?.installed); if (t) { S.tool = t; if (!S.key) renderThread(); } }   // a new chat starts on a program you have
   $('todayBtn').hidden = !cfg.today;
   if (cfg.remote) { S.remote = true; S.mode = 'readonly'; fillSelects(); renderTop(); } const box = $('linksList'); for (const l of cfg.links || []) { const b = el('button', ''); b.innerHTML = `<span class="ic">${icon(l.icon === 'chess' ? 'chess' : 'link', 17)}</span>`; b.append(l.name); const ch = el('span', 'chev', '↗'); b.append(ch); b.onclick = () => window.open(l.url, '_blank', 'noopener'); box.append(b); } }).catch(() => {});
 

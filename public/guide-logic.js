@@ -13,7 +13,7 @@ export const STEPS = [
     accepts: (ev) => ev.type === 'next' },
   { id: 'connect', page: 'any', target: null, engines: true,
     title: 'Connect your AI',
-    text: 'Agents World has no AI account of its own. It runs Claude Code or Codex on this computer, logged in with your own subscription. One is enough: Claude Code gives you Bella, Codex gives you Interstellar, both give you both. It never asks for your password or keys.',
+    text: 'Agents World has no AI account of its own. It runs Claude Code or Codex on this computer, logged in with your own subscription. One is enough: Claude Code gives you Bella, Codex gives you Interstellar, both give you both. Antigravity works with a free Google account for your own chats. It never asks for your password or keys.',
     accepts: (ev) => ev.type === 'engine-ok' },
   { id: 'name', page: 'any', target: null, input: 'name',
     title: 'What should the agents call you?',
@@ -56,6 +56,9 @@ export const ENGINES = {
   codex: { name: 'Codex', plan: 'a ChatGPT Plus or Pro plan', docs: 'https://github.com/openai/codex',
     install: { mac: 'npm install -g @openai/codex', win: 'npm install -g @openai/codex' },
     login: 'codex', loginHow: 'Run it and choose "Sign in with ChatGPT". Close it when you are logged in.' },
+  antigravity: { name: 'Antigravity', plan: 'a Google account (free, AI Pro or Ultra) or a Gemini API key', docs: 'https://antigravity.google/docs/getting-started?tab=cli',
+    install: { mac: 'curl -fsSL https://antigravity.google/cli/install.sh | bash', win: 'irm https://antigravity.google/cli/install.ps1 | iex' },
+    login: 'agy', loginHow: 'Run it and sign in with your Google account in the browser. Close it when you are signed in. Its chats show up in the world; Bella and Interstellar need Claude Code or Codex.' },
   opencode: { name: 'OpenCode', plan: 'an OpenCode account or another provider', docs: 'https://opencode.ai/docs/',
     install: { mac: 'curl -fsSL https://opencode.ai/install | bash', win: 'npm install -g opencode-ai' },
     login: 'opencode', loginHow: 'Run it, type /connect and follow the steps. Optional: Bella and Interstellar need Claude Code or Codex.' },
@@ -64,7 +67,7 @@ export const ENGINES = {
 /**
  * Installed, but its folder is not on PATH (the Claude Code installer on Windows warns about this): the commands that fix it.
  * fix adds the folder to your PATH for good; run starts it once by its full path, so you can log in right away.
- * @param {string} bin  'claude' | 'codex' | 'opencode'
+ * @param {string} bin  'claude' | 'codex' | 'opencode' | 'agy'
  * @param {string} dir  the folder it was found in
  * @param {'win' | 'mac'} os
  */

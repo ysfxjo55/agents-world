@@ -12,7 +12,7 @@ Everything runs on your own computer. Nothing is sent anywhere except what the a
 
 ## What you need
 - **Node.js 22.5 or newer** (from https://nodejs.org).
-- At least one of these, installed and logged in: **Claude Code** (`claude`), **Codex** (`codex`), **OpenCode** (`opencode`). Agents World reads their session files and starts them for you. It does not have its own AI account. See "Which subscription do I need?" below.
+- At least one of these, installed and logged in: **Claude Code** (`claude`), **Codex** (`codex`), **OpenCode** (`opencode`), **Google Antigravity CLI** (`agy`). Agents World reads their session files and starts them for you. It does not have its own AI account. See "Which subscription do I need?" below.
 - macOS or Windows. Linux works too, but desktop notifications and "open in terminal" are skipped there.
 
 ## Which subscription do I need?
@@ -23,6 +23,9 @@ Everything runs on your own computer. Nothing is sent anywhere except what the a
 | Claude Pro or Max | Claude Code: `curl -fsSL https://claude.ai/install.sh \| bash` (Windows PowerShell: `irm https://claude.ai/install.ps1 \| iex`) | run `claude` and log in in the browser | You get **Bella**, your manager, plus the Agent Guild and the Research Lab. |
 | ChatGPT Plus or Pro | Codex: `npm install -g @openai/codex` | run `codex` and choose "Sign in with ChatGPT" | You get **Interstellar**, your partner. The Agent Guild and the Research Lab need Claude Code. |
 | Both | both of the above | both | You get both, and the Family chat where they talk together. |
+| A Google account (free, AI Pro or Ultra) | Antigravity CLI: `curl -fsSL https://antigravity.google/cli/install.sh \| bash` (Windows PowerShell: `irm https://antigravity.google/cli/install.ps1 \| iex`) | run `agy` and sign in with Google | Your Antigravity chats in the world and the chat page. Bella and Interstellar need Claude Code or Codex. |
+
+**Antigravity notes:** its conversations show up as blocks (read from `~/.gemini/antigravity-cli/conversation_summaries.db`). Antigravity stores the messages themselves in a format Agents World cannot read, so the chat page shows only what you sent and received through Agents World; the full history stays in `agy --conversation <id>`. Its access levels map to Antigravity's own modes (Read-only = plan mode in its sandbox). Moving its conversations to Trash is not supported yet.
 
 The free Claude plan does not include Claude Code. OpenCode works for plain chats too, but Bella and Interstellar need Claude Code or Codex. The first-steps guide shows what it found on your computer and the commands for anything missing. To choose yourself, set `agents` in `data/config.json` (see Settings).
 

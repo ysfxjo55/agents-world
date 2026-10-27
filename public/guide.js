@@ -105,7 +105,7 @@ function engineList() {
     b.onclick = () => navigator.clipboard.writeText(cmd).then(() => { b.textContent = 'Copied'; setTimeout(() => (b.textContent = 'Copy'), 1200); }).catch(() => {}); row.append(code, b); return row; };
   for (const [id, e] of Object.entries(ENGINES)) {
     const f = found[id] || {}, ok = f.installed && f.loggedIn !== false, lost = f.installed && f.onPath === false && f.dir;
-    const fx = lost ? pathFix(id, f.dir, os) : null;
+    const fx = lost ? pathFix(id === 'antigravity' ? 'agy' : id, f.dir, os) : null;   // Antigravity's program is called agy
     const d = el('details', 'gd-eng' + (ok ? ' ok' : '')); d.open = (!ok && id !== 'opencode' && !engineWorks(found)) || (lost && !f.loggedIn);
     d.append(el('summary', '', `${e.name}: ${ok ? (f.loggedIn ? 'ready' : 'installed') : lost ? `installed, but ${fx.where} can't find it yet` : f.installed ? 'installed, not logged in' : 'not found'}`));
     if (lost) {                       // installed in a folder that is not on PATH: typing its name in a terminal fails

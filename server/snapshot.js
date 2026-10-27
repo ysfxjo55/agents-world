@@ -5,6 +5,7 @@ import os from 'node:os';
 import { listClaude, claudeDetail, claudeTranscript, CLAUDE_ROOT } from './sources/claude.js';
 import { listCodex, codexDetail, codexTranscript } from './sources/codex.js';
 import { listOpenCode, opencodeDetail, opencodeTranscript } from './sources/opencode.js';
+import { listAntigravity, antigravityDetail, antigravityTranscript } from './sources/antigravity.js';
 import { isArchived, getAlias } from './store.js';
 import { listAgents } from './agents.js';
 import { liveRuns, applyRuns } from './runs.js';
@@ -21,6 +22,7 @@ export const SOURCES = {
   codex: { label: 'Codex CLI', list: listCodex, detail: codexDetail, transcript: codexTranscript, resume: (s) => `codex resume ${s.id}` },
   claude:   { label: 'Claude Code', list: listClaude,   detail: claudeDetail, transcript: claudeTranscript, resume: (s) => `claude --resume ${s.id}` },
   opencode: { label: 'OpenCode',    list: listOpenCode, detail: opencodeDetail, transcript: opencodeTranscript, resume: (s) => `opencode -s ${s.id}` },
+  antigravity: { label: 'Antigravity', list: listAntigravity, detail: antigravityDetail, transcript: antigravityTranscript, resume: (s) => `agy --conversation ${s.id}` },
 };
 
 const home = os.homedir();

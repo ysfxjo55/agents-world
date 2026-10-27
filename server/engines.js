@@ -7,7 +7,7 @@ import { knownDirs, savedUserPath } from './util.js';
 // Agents World has no AI account of its own: it runs Claude Code, Codex or OpenCode, logged in with your own subscription.
 // We only look for files. We never read, store or send a password, key or token.
 
-export const ENGINE_NAMES = { claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode' };
+export const ENGINE_NAMES = { claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode', antigravity: 'Antigravity' };
 const DEFAULTS = { bella: 'claude', interstellar: 'codex' };   // with both engines, each agent gets its own brain
 
 /**
@@ -30,11 +30,13 @@ export function detectEngines({ env = process.env, platform = process.platform, 
     if (env.ANTHROPIC_API_KEY || exists(p.join(home, '.claude', '.credentials.json'))) return true;
     try { return !!JSON.parse(read(p.join(home, '.claude.json'))).oauthAccount; } catch { return false; }   // only checks that an account is set, never reads a token
   };
-  const claude = find('claude'), codex = find('codex'), opencode = find('opencode');
+  const claude = find('claude'), codex = find('codex'), opencode = find('opencode'), antigravity = find('agy');
   return {
     claude: { ...claude, loggedIn: claude.installed ? claudeLogin() : false },
     codex: { ...codex, loggedIn: codex.installed ? !!env.OPENAI_API_KEY || exists(p.join(home, '.codex', 'auth.json')) : false },
     opencode: { ...opencode, loggedIn: opencode.installed ? exists(p.join(home, '.local', 'share', 'opencode', 'auth.json')) : false },
+    // Google Antigravity CLI (agy): a Google sign-in leaves a token file in ~/.gemini; an API key works too
+    antigravity: { ...antigravity, loggedIn: antigravity.installed ? !!env.GEMINI_API_KEY || exists(p.join(home, '.gemini', 'oauth_creds.json')) || exists(p.join(home, '.gemini', 'jetski-standalone-oauth-token')) : false },
   };
 }
 

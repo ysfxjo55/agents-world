@@ -11,6 +11,7 @@ import { USER } from './config.js';
 import { toolBrief } from './sources/claude.js';
 import { personaFor, codexPersonaPrompt } from './family-persona.js';
 import { currentEngines, ENGINE_NAMES } from './engines.js';
+import { rememberTurn } from './sources/antigravity.js';
 import { UPLOADS, originalOf } from './uploads.js';
 
 // Runs one chat turn by driving the real CLI headlessly and translating its output into simple events.
@@ -94,6 +95,17 @@ export function chatAccessError({ tool, mode, agent, remote }) {
   return null;
 }
 
+// Antigravity (agy) has its own modes instead of our access levels. Read-only = plan mode in its sandbox (it plans, does not change files);
+// edits and builds = it may edit without asking (commands stay sandboxed for edits); full = everything allowed without asking.
+export const AGY_MODES = { readonly: ['--mode', 'plan', '--sandbox'], edits: ['--mode', 'accept-edits', '--sandbox'], build: ['--mode', 'accept-edits'], full: ['--mode', 'auto', '--dangerously-skip-permissions'] };
+export function buildAgyArgs({ text, sessionId = null, mode, addDirs = [] }) {
+  if (!AGY_MODES[mode]) throw new Error('bad mode');
+  const args = ['-p', text.startsWith('-') ? ' ' + text : text, '--output-format', 'stream-json', ...AGY_MODES[mode]];   // a leading "-" must not be read as a flag
+  if (sessionId) args.push('--conversation', sessionId);
+  for (const dir of addDirs) args.push('--add-dir', dir);
+  return args;
+}
+
 export function buildCodexArgs({ cwd, sessionId = null, mode, addDirs = [] }) {
   const sandbox = { readonly: 'read-only', edits: 'workspace-write', build: 'workspace-write', full: 'danger-full-access' }[mode];
   if (!sandbox) throw new Error('bad mode');
@@ -112,6 +124,7 @@ export const releaseRunToken = (t) => runTokens.delete(t);
 export const maxModeForToken = (t) => runTokens.get(String(t || '')) || 'readonly';
 
 export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [], addDirs = [], remote = false, usageSource = 'chat' }, emitCallback, onClose) {
+  const originalText = text;   // what you typed, before attachments notes are added (kept in Antigravity's local log)
   const eng = currentEngines();
   if (agent === 'interstellar' && tool !== eng.interstellar) throw new Error(`Interstellar runs on ${ENGINE_NAMES[eng.interstellar] || 'Codex'} here.`);
   if (agent === 'bella' && tool !== eng.bella) throw new Error(`Bella runs on ${ENGINE_NAMES[eng.bella] || 'Claude Code'} here.`);
@@ -149,6 +162,10 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
     args = buildCodexArgs({ cwd, sessionId, mode, addDirs: [...new Set([...addDirs, ...(['edits', 'build'].includes(mode) ? own : [])])] });
     if (images.length) text += `\n\n[Attached files: ${images.join(', ')}. Read them before answering.]`;
     stdin = text;
+  } else if (tool === 'antigravity') {
+    cmd = 'agy';
+    if (images.length) text += `\n\n[Attached files: ${images.join(', ')}. Read them before answering.]`;
+    args = buildAgyArgs({ text, sessionId, mode, addDirs: [...addDirs, ...(images.length ? [UPLOADS] : [])] });
   } else {
     cmd = 'opencode';
     args = ['run', '--format', 'json', '--dir', cwd];
@@ -157,7 +174,7 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
     for (const f of images) args.push(`--file=${f}`);
     args.push(text.startsWith('-') ? ' ' + text : text);   // a leading "-" must not be read as a flag
   }
-  const bin = process.env.AGENT_WORLD_TEST_BIN && cmd === 'opencode' ? process.env.AGENT_WORLD_TEST_BIN : cmd === 'codex' && process.env.AGENT_WORLD_TEST_CODEX_BIN ? process.env.AGENT_WORLD_TEST_CODEX_BIN : cmd === 'claude' && process.env.AGENT_WORLD_TEST_CLAUDE_BIN ? process.env.AGENT_WORLD_TEST_CLAUDE_BIN : cmd;   // test hook: a fake program that hangs
+  const bin = process.env.AGENT_WORLD_TEST_BIN && cmd === 'opencode' ? process.env.AGENT_WORLD_TEST_BIN : cmd === 'codex' && process.env.AGENT_WORLD_TEST_CODEX_BIN ? process.env.AGENT_WORLD_TEST_CODEX_BIN : cmd === 'agy' && process.env.AGENT_WORLD_TEST_AGY_BIN ? process.env.AGENT_WORLD_TEST_AGY_BIN : cmd === 'claude' && process.env.AGENT_WORLD_TEST_CLAUDE_BIN ? process.env.AGENT_WORLD_TEST_CLAUDE_BIN : cmd;   // test hook: a fake program that hangs
   const trackers = new Map();
   const spawnChild = () => {
     const usage = new RunUsage({ tool, agent, sessionId, source: usageSource, attempt: trackers.size + 1 });
@@ -219,6 +236,22 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
     } else if (d.type === 'step_finish' && p.reason === 'stop') { st.result = true; emit({ t: 'done', ok: true, cost: p.cost, denied: [] }); }
     else if (d.type === 'error') emit({ t: 'error', text: clip(JSON.stringify(d.error || d), 300) });
   };
+  let agyReply = '';
+  const handleAgy = (d) => {                                          // agy --output-format stream-json: init, step_update..., result
+    if (d.event === 'init' && d.conversation_id) { start(d.conversation_id); emit({ t: 'status', text: 'Thinking…' }); }
+    const u = d.step_update;
+    if (u) {
+      if (u.step_type === 'agent_response' && u.text_delta) { agyReply += u.text_delta; emit({ t: 'delta', id: `agy-${u.step_index}`, text: u.text_delta }); }
+      else if (u.state === 'ACTIVE' && u.step_type && u.step_type !== 'user_input' && u.step_type !== 'agent_response') emit({ t: 'status', text: `Working: ${String(u.step_type).replace(/_/g, ' ')}` });
+    }
+    if (d.event === 'result' && d.result) {
+      const ok = d.result.status === 'SUCCESS';
+      st.result = true;
+      if (ok) rememberTurn(d.result.conversation_id || key?.split(':')[1], originalText, agyReply || d.result.response || '');
+      emit({ t: 'done', ok, denied: [], error: ok ? null : clip(d.result.error || d.result.response || d.result.status || 'Antigravity reported an error', 300) });
+    }
+    if (d.event === 'error') emit({ t: 'error', text: clip(d.error?.message || JSON.stringify(d.error || d), 300) });
+  };
   const handleCodex = (d) => {
     try { observeUsageEvent('codex', d); } catch { /* optional quota telemetry must not break chat */ }
     if (d.type === 'thread.started') start(d.thread_id);
@@ -265,14 +298,14 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
         const line = buf.slice(0, i); buf = buf.slice(i + 1); if (!line.trim()) continue;
         let d; try { d = JSON.parse(line); } catch { continue; }
         usage.observe(d);
-        try { tool === 'claude' ? handleClaude(d) : tool === 'codex' ? handleCodex(d) : handleOpen(d); } catch (e) { emit({ t: 'error', text: e.message }); }
+        try { tool === 'claude' ? handleClaude(d) : tool === 'codex' ? handleCodex(d) : tool === 'antigravity' ? handleAgy(d) : handleOpen(d); } catch (e) { emit({ t: 'error', text: e.message }); }
       }
     });
     c.stderr.on('data', (d) => { st.err = (st.err + d).slice(-1500); });
     c.on('error', (e) => { emit({ t: 'error', text: `Could not start ${cmd}: ${e.message}` }); });
     c.on('close', (code, sig) => {
       if (c !== child || finished) { usage.finish({ status: 'stopped' }); return; }
-      if (buf.trim()) { try { const d = JSON.parse(buf); usage.observe(d); tool === 'claude' ? handleClaude(d) : tool === 'codex' ? handleCodex(d) : handleOpen(d); } catch {} buf = ''; }
+      if (buf.trim()) { try { const d = JSON.parse(buf); usage.observe(d); tool === 'claude' ? handleClaude(d) : tool === 'codex' ? handleCodex(d) : tool === 'antigravity' ? handleAgy(d) : handleOpen(d); } catch {} buf = ''; }
       usage.finish({ sessionId: key?.slice(key.indexOf(':') + 1), status: callbackError || usage.failed || code !== 0 && !sig ? 'failed' : sig ? 'stopped' : st.result ? 'completed' : 'failed' });
       finished = true; clearTimeout(timer); clearTimeout(watchdog);
       if (!st.result) emit({ t: sig ? 'done' : 'error', ok: false, denied: [], text: sig ? 'Stopped' : clip(st.err || `${cmd} exited with code ${code}`, 400), error: sig ? 'Stopped' : null });
@@ -283,5 +316,6 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
   attach(child); armWatchdog();
   if (tool === 'claude') start(sessionId);
   if (tool === 'codex') emit({ t: 'status', text: 'Starting Codex…' });
+  if (tool === 'antigravity') emit({ t: 'status', text: 'Starting Antigravity…' });
   return { get child() { return child; }, get key() { return key; } };
 }

@@ -107,7 +107,7 @@ test('detectEngines finds programs on PATH and login files, without reading toke
   const home = '/h', files = new Set(['/h/.local/bin/claude', '/usr/local/bin/codex', '/h/.codex/auth.json']);
   const read = (f) => { assert.equal(f, '/h/.claude.json'); return JSON.stringify({ oauthAccount: { emailAddress: 'x' } }); };
   const found = detectEngines({ env: { PATH: '' }, platform: 'darwin', home, exists: (f) => files.has(f), read });
-  assert.deepEqual(found, { claude: { installed: true, dir: '/h/.local/bin', onPath: true, loggedIn: true }, codex: { installed: true, dir: '/usr/local/bin', onPath: true, loggedIn: true }, opencode: { installed: false, loggedIn: false } });
+  assert.deepEqual(found, { claude: { installed: true, dir: '/h/.local/bin', onPath: true, loggedIn: true }, codex: { installed: true, dir: '/usr/local/bin', onPath: true, loggedIn: true }, opencode: { installed: false, loggedIn: false }, antigravity: { installed: false, loggedIn: false } });
   const none = detectEngines({ env: { PATH: '' }, platform: 'darwin', home, exists: () => false, read: () => '{}' });
   assert.equal(engineSummary(none).any, false);
   assert.equal(engineSummary(none).bella, null);

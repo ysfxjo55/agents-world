@@ -49,6 +49,8 @@ export async function trashSession(s) {
       meta.origFile = file;
       fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(meta, null, 2));
       move(file, path.join(dir, 'session.jsonl')); undo.push(() => move(path.join(dir, 'session.jsonl'), file));
+    } else if (s.tool === 'antigravity') {
+      throw new Error('Antigravity conversations cannot be moved to Trash from here yet');
     } else if (s.tool === 'opencode') {
       const file = path.join(dir, 'export.json');
       await runToFile('opencode', ['export', s.id], { cwd: cwdOr(s.cwd) }, file);

@@ -2,6 +2,9 @@
 
 Each version starts with "## <version>". The app shows these lines in its "A new version is ready" banner.
 
+## 0.2.6
+- New: Google Antigravity CLI (agy). Its conversations show up in the world, and you can chat with it from the Chat page. Works with a free Google account.
+
 ## 0.2.5
 - Chat: when a message can't be sent, it stays on screen with the red reason, instead of disappearing.
 - Chat: a warning when the conversation is also open in a Terminal window (Mac and Linux).

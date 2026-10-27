@@ -48,7 +48,7 @@ export function isTodayChat(session, lifeDir) {
 // Windows: PATH is separated by ";" and is called "Path"; the native Claude Code installer uses %USERPROFILE%\.local\bin.
 // The folders installers put these programs in, even when they are not on PATH yet (the Claude Code installer on Windows says so).
 export function knownDirs(env = process.env, platform = process.platform, home = os.homedir()) {
-  if (platform === 'win32') return [path.win32.join(home, '.local', 'bin'), ...(env.APPDATA ? [path.win32.join(env.APPDATA, 'npm')] : [])];
+  if (platform === 'win32') return [path.win32.join(home, '.local', 'bin'), ...(env.APPDATA ? [path.win32.join(env.APPDATA, 'npm')] : []), ...(env.LOCALAPPDATA ? [path.win32.join(env.LOCALAPPDATA, 'agy', 'bin')] : [])];   // agy: Antigravity's Windows installer
   return [path.posix.join(home, '.local/bin'), path.posix.join(home, '.npm-global/bin'), '/opt/homebrew/bin', '/usr/local/bin'];   // posix: right even when tested on Windows
 }
 export function toolPath(env = process.env, platform = process.platform, home = os.homedir()) {

@@ -36,4 +36,5 @@ export const TOOLS = {
   claude:   { label: 'Claude Code', color: '#e8825c', accent: '#ffb199' },
   codex:    { label: 'Codex', color: '#ffb347', accent: '#ffd9a0' },
   opencode: { label: 'OpenCode',    color: '#2fb5a6', accent: '#8fe3d8' },
+  antigravity: { label: 'Antigravity', color: '#5b8def', accent: '#a9c4ff' },
 };
