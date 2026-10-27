@@ -54,16 +54,18 @@ test('a failed agy turn shows its reason in red', async () => {
 
 test('conversations come from conversation_summaries.db as world blocks with folder, title and status', async () => {
   const { DatabaseSync } = await import('node:sqlite');
+  const { pathToFileURL } = await import('node:url');
+  const proj = path.join(dir, 'proj'), uri = pathToFileURL(proj).href;   // a real folder on this system (Windows: file:///C:/...)
   const file = path.join(dir, 'conversation_summaries.db'), db = new DatabaseSync(file);
   db.exec('CREATE TABLE conversation_summaries (conversation_id text, title text, preview text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, status text)');
   const ins = db.prepare('INSERT INTO conversation_summaries VALUES (?,?,?,?,?,?,?)');
-  ins.run('869bf516-01a4-4b85-98c3-e3385e06030c', 'Replying With One', 'p', '2026-10-27 03:01:36.510062+00:00', '2026-10-27 03:01:32.83683+00:00', JSON.stringify(['file:///tmp/proj']), 'CASCADE_RUN_STATUS_IDLE');
-  ins.run('bad id!', 'x', 'p', '2026-10-27 03:01:36+00:00', '', JSON.stringify(['file:///tmp/proj']), '');
+  ins.run('869bf516-01a4-4b85-98c3-e3385e06030c', 'Replying With One', 'p', '2026-10-27 03:01:36.510062+00:00', '2026-10-27 03:01:32.83683+00:00', JSON.stringify([uri]), 'CASCADE_RUN_STATUS_IDLE');
+  ins.run('bad id!', 'x', 'p', '2026-10-27 03:01:36+00:00', '', JSON.stringify([uri]), '');
   db.close();
   const rows = readSummaries(file); assert.equal(rows.length, 2);
   const now = Date.parse('2026-10-27T03:02:00Z');
   const s = sessionFromRow(rows[0], now);
-  assert.deepEqual([s.key, s.tool, s.title, s.cwd, s.status, s.lastActivity], ['antigravity:869bf516-01a4-4b85-98c3-e3385e06030c', 'antigravity', 'Replying With One', '/tmp/proj', 'needs', Date.parse('2026-10-27T03:01:36.510Z')]);
+  assert.deepEqual([s.key, s.tool, s.title, s.cwd, s.status, s.lastActivity], ['antigravity:869bf516-01a4-4b85-98c3-e3385e06030c', 'antigravity', 'Replying With One', proj, 'needs', Date.parse('2026-10-27T03:01:36.510Z')]);
   assert.equal(sessionFromRow(rows[1], now), null);                                 // unsafe ids are skipped
   assert.equal(sessionFromRow({ ...rows[0], status: 'CASCADE_RUN_STATUS_RUNNING' }, now).status, 'working');
   assert.deepEqual(readSummaries(path.join(dir, 'missing.db')), []);
