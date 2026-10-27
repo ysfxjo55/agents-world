@@ -262,7 +262,7 @@ test('git update: stops when you changed app files, else pulls fast-forward only
 test('git update: a package-lock.json changed by an older npm is reset, pulled, then rebuilt with npm ci', async () => {
   const { updateGit } = await import('../server/updater.js');
   const calls = []; updateGit('/x', (cmd, args) => { calls.push(`${cmd} ${args.join(' ')}`); return cmd === 'git' && args[0] === 'status' ? ' M package-lock.json\n' : ''; });
-  assert.deepEqual(calls, ['git status --porcelain --untracked-files=no', 'git checkout -- package-lock.json', 'git pull --ff-only origin main', 'npm ci --no-audit --no-fund']);
+  assert.deepEqual(calls, ['git status --porcelain --untracked-files=no', 'git checkout -- package-lock.json', 'git pull --ff-only origin main', 'npm ci --ignore-scripts --no-audit --no-fund']);
   assert.throws(() => updateGit('/x', () => ' M package-lock.json\n M server/index.js\n'), /changed some app files/);
 });
 

@@ -175,7 +175,7 @@ async function handle(req, res) {
   const auth = checkRequest({ host: req.headers.host, headers: req.headers, port: PORT, hosts: config.hosts, owner: config.owner, selfIps: ownTailnetIps() });
   if (!auth.ok) return json(res, auth.status, { error: auth.error });
   const write = req.method !== 'GET' && req.method !== 'HEAD';
-  if (write && !originAllowed(req.headers.origin, { port: PORT, hosts: config.hosts })) return json(res, 403, { error: 'bad origin' });
+  if (write && !originAllowed(req.headers.origin, { port: PORT, hosts: config.hosts, fetchSite: String(req.headers['sec-fetch-site'] || '') })) return json(res, 403, { error: 'bad origin' });
 
   const url = new URL(req.url, `http://${req.headers.host}`), p = url.pathname;
   if (p.startsWith('/life/')) { const f = p.slice(5); if (/^\/(board\.html|localdb\.js)$/.test(f)) return proxyLife(req, res, f + url.search); return json(res, 404, { error: 'not found' }); }

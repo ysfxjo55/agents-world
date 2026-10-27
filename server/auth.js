@@ -21,7 +21,10 @@ export function checkRequest({ host, headers = {}, port, hosts = [], owner = '',
 }
 
 // A browser sends Origin on cross-site writes. Accept only our own addresses.
-export function originAllowed(origin, { port, hosts = [] }) {
+// Sec-Fetch-Site is a second, independent check: modern browsers say "cross-site" or "same-site" for requests that another
+// website (or another app on localhost) makes, and that header cannot be faked by a web page.
+export function originAllowed(origin, { port, hosts = [], fetchSite = '' }) {
+  if (fetchSite && fetchSite !== 'same-origin' && fetchSite !== 'none') return false;
   if (!origin) return true;
   const own = [`localhost:${port}`, `127.0.0.1:${port}`, ...hosts];
   return own.some(h => origin === `http://${h}` || origin === `https://${h}`);

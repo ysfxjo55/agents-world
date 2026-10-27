@@ -50,7 +50,7 @@ export function saveSettings(patch, file = FILE) {
   if (!cur || typeof cur !== 'object' || Array.isArray(cur)) cur = {};
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify({ ...cur, ...patch }, null, 2) + '\n');
+  fs.writeFileSync(tmp, JSON.stringify({ ...cur, ...patch }, null, 2) + '\n', { mode: 0o600 });   // only you can read it (it can hold your ntfy topic)
   fs.renameSync(tmp, file);
   if (file === FILE) Object.assign(config, patch);
 }

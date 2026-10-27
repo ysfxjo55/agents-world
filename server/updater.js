@@ -33,6 +33,9 @@ export function notesFor(changelog, from, to) {
   return out.slice(0, 12);
 }
 
+/** Every path in the download must stay inside its own folder: no absolute paths, no "..", no Windows drive letters. */
+export const safeArchive = (entries) => entries.length > 0 && entries.every(e => !/^([\\/]|[A-Za-z]:)/.test(e) && !e.replace(/\\/g, '/').split('/').includes('..'));
+
 /** 'git' when the app folder is a git clone, else 'zip' (downloaded as a ZIP). */
 export const installKind = (root = ROOT, exists = fs.existsSync) => (exists(path.join(root, '.git')) ? 'git' : 'zip');
 
@@ -77,7 +80,7 @@ export function updateGit(root = ROOT, run = runDefault) {
   if (changed.length) run('git', ['checkout', '--', 'package-lock.json'], root);
   const lock = hashFile(path.join(root, 'package-lock.json'));
   run('git', ['pull', '--ff-only', 'origin', BRANCH], root);
-  if (changed.length || hashFile(path.join(root, 'package-lock.json')) !== lock) run('npm', ['ci', '--no-audit', '--no-fund'], root);
+  if (changed.length || hashFile(path.join(root, 'package-lock.json')) !== lock) run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], root);
   return 'Updated with git.';
 }
 
@@ -110,13 +113,16 @@ export async function updateZip(root = ROOT, { doFetch = fetch, run = runDefault
     if (!r.ok) throw new Error(`Download failed (${r.status}).`);
     const file = path.join(tmp, 'update.tar.gz'); fs.writeFileSync(file, Buffer.from(await r.arrayBuffer()));
     const out = path.join(tmp, 'x'); fs.mkdirSync(out);
+    const entries = run('tar', ['-tzf', file], tmp).split('\n').filter(Boolean);
+    if (!safeArchive(entries)) throw new Error('The download contains unsafe file paths, so I did not install it.');
     run('tar', ['-xzf', file, '-C', out], tmp);
     const top = fs.readdirSync(out).map(d => path.join(out, d)).find(d => fs.statSync(d).isDirectory());
     if (!top || !fs.existsSync(path.join(top, 'package.json'))) throw new Error('The download did not look like Agents World.');
+    if (compareVersions(currentVersion(top), currentVersion(root)) <= 0) throw new Error('The download is not newer than this version, so I did not install it.');
     const lock = hashFile(path.join(root, 'package-lock.json'));
     const backup = path.join(root, 'data', 'backups', `update-${currentVersion(root)}-${Date.now()}`);
     const n = copyRelease(top, root, backup);
-    if (hashFile(path.join(root, 'package-lock.json')) !== lock) run('npm', ['ci', '--no-audit', '--no-fund'], root);
+    if (hashFile(path.join(root, 'package-lock.json')) !== lock) run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], root);
     return `Updated ${n} files. The old ones are in ${path.relative(root, backup)}.`;
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
@@ -143,6 +149,7 @@ export function createUpdater({ settings = {}, busy = () => false, onInstalled =
   async function install() {
     if (state.installing) return { ok: false, error: 'An update is already running.' };
     if (busy()) return { ok: false, error: 'An agent is still working. Try again when it has finished.' };
+    if (!state.available) return { ok: false, error: 'There is no newer version to install.' };
     state.installing = true; state.error = null;
     try {
       const message = state.kind === 'git' ? updateGit(root, run) : await updateZip(root, { doFetch, run });

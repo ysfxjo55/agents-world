@@ -7,7 +7,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-if not exist node_modules call npm ci --no-audit --no-fund
+if not exist node_modules call npm ci --ignore-scripts --no-audit --no-fund
 rem already running? just open the page
 powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://127.0.0.1:4321/ | Out-Null; exit 0 } catch { exit 1 }"
 if not errorlevel 1 (
