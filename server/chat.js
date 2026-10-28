@@ -99,6 +99,13 @@ export function chatAccessError({ tool, mode, agent, remote }) {
 // Antigravity (agy) has its own modes instead of our access levels. Read-only = plan mode in its sandbox (it plans, does not change files);
 // edits and builds = it may edit without asking (commands stay sandboxed for edits); full = everything allowed without asking.
 export const AGY_MODES = { readonly: ['--mode', 'plan', '--sandbox'], edits: ['--mode', 'accept-edits', '--sandbox'], build: ['--mode', 'accept-edits'], full: ['--mode', 'auto', '--dangerously-skip-permissions'] };
+/** Plain words for what Antigravity was not allowed to do. Running a command (needed to move, copy or delete files) is only allowed in Full access. */
+export function agyDeniedHelp(denied, mode) {
+  const list = [...new Set(denied)].join(', ');
+  const cmd = denied.some(d => /command/i.test(d));
+  return `Antigravity was not allowed to: ${list}. It cannot ask for permission from here, so it stopped${cmd ? '. Moving, copying or deleting files needs a command, and Antigravity can only run commands in Full access' : ''}.${mode === 'full' ? '' : ' Change the access mode (top right) if you trust this task, then ask again.'}`;
+}
+
 export function buildAgyArgs({ text, sessionId = null, mode, addDirs = [] }) {
   if (!AGY_MODES[mode]) throw new Error('bad mode');
   const args = ['-p', text.startsWith('-') ? ' ' + text : text, '--output-format', 'stream-json', ...AGY_MODES[mode]];   // a leading "-" must not be read as a flag
@@ -245,13 +252,28 @@ export function startRun({ tool, sessionId, cwd, text, mode, agent, images = [],
     const u = d.step_update;
     if (u) {
       if (u.step_type === 'agent_response' && u.text_delta) { agyReply += u.text_delta; emit({ t: 'delta', id: `agy-${u.step_index}`, text: u.text_delta }); }
-      else if (u.state === 'ACTIVE' && u.step_type && u.step_type !== 'user_input' && u.step_type !== 'agent_response') emit({ t: 'status', text: `Working: ${String(u.step_type).replace(/_/g, ' ')}` });
+      else if (u.step_type === 'tool') {                              // a tool step: show it, and its result or refusal, like the other engines
+        const info = u.tool_info || {}, name = u.tool_name || info.name || 'tool', prm = info.parameters || {}, id = `agy-tool-${u.step_index}`;
+        if (u.state === 'ACTIVE') {
+          addBlocks(id, [{ type: 'tool', id, name, summary: `${name} · ${clip(prm.CommandLine ?? prm.AbsolutePath ?? prm.TargetFile ?? Object.values(prm)[0] ?? '', 160)}` }]);
+          emit({ t: 'status', text: `Working: ${String(name).replace(/_/g, ' ')}` });
+        } else {                                                      // DONE or ERROR: the step is over, so "Working" ends too
+          emit({ t: 'result', id, text: clip(info.error?.message || info.output || (u.state === 'ERROR' ? 'failed' : 'done'), 700), error: u.state === 'ERROR' });
+          emit({ t: 'status', text: 'Thinking…' });
+        }
+      } else if (u.state === 'ACTIVE' && u.step_type && u.step_type !== 'user_input' && u.step_type !== 'agent_response') emit({ t: 'status', text: `Working: ${String(u.step_type).replace(/_/g, ' ')}` });
     }
     if (d.event === 'result' && d.result) {
-      const ok = d.result.status === 'SUCCESS';
+      const r = d.result, ok = r.status === 'SUCCESS', reply = typeof r.response === 'string' ? r.response : '';
+      if (ok && !agyReply.trim() && reply.trim()) { agyReply = reply; emit({ t: 'delta', id: 'agy-result', text: reply }); }   // the reply only came in the final envelope
+      // In this mode Antigravity cannot ask you, so every permission request is answered "no" and listed here.
+      const denied = (Array.isArray(r.denied_actions) ? r.denied_actions : []).map(a => String(a.display_name || a.action || 'an action'));
       st.result = true;
-      if (ok) rememberTurn(d.result.conversation_id || key?.split(':')[1], originalText, agyReply || d.result.response || '');
-      emit({ t: 'done', ok, denied: [], error: ok ? null : clip(d.result.error || d.result.response || d.result.status || 'Antigravity reported an error', 300) });
+      if (ok) rememberTurn(r.conversation_id || key?.split(':')[1], originalText, agyReply);
+      emit({ t: 'done', ok: ok && !denied.length && !!agyReply.trim(), denied: [],   // the refusal is explained in error below, once
+        error: !ok ? clip(r.error || reply || r.status || 'Antigravity reported an error', 300)
+          : denied.length ? agyDeniedHelp(denied, mode)
+          : !agyReply.trim() ? 'Antigravity finished without writing a reply. Check the files it was asked to change before you ask again.' : null });
     }
     if (d.event === 'error') emit({ t: 'error', text: clip(d.error?.message || JSON.stringify(d.error || d), 300) });
   };

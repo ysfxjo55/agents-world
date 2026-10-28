@@ -2,6 +2,10 @@
 
 Each version starts with "## <version>". The app shows these lines in its "A new version is ready" banner.
 
+## 0.2.11
+- Antigravity: each step it takes (reading files, running commands) now shows in the chat, and "Working" ends when the step ends.
+- Antigravity: when it was not allowed to do something (for example run a command to move files), the chat says what was blocked and what to change, instead of looking finished.
+
 ## 0.2.10
 - Security: the board ignores unsafe values in its data files, so an edited file cannot put code into the page.
 - Security: OpenCode chats are not offered through Tailscale, because OpenCode cannot be held to read-only.

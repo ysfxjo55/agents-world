@@ -89,3 +89,47 @@ test('usage: an agy result counts input, cached and output (with thinking) token
   assert.deepEqual([row.inputTokens, row.cachedInputTokens, row.outputTokens, row.reasoningTokens], [10, 4, 3, 1]);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+// Lines from a real agy run (Read-only = plan mode + sandbox) asked to move files: its command is refused, it stops after one sentence.
+const REAL_READONLY = [
+  { event: 'init', conversation_id: 'conv-ro-1', init: { cwd: '/tmp/x' } },
+  { event: 'step_update', step_update: { conversation_id: 'conv-ro-1', step_index: 0, state: 'DONE', step_type: 'user_input' } },
+  { event: 'step_update', step_update: { conversation_id: 'conv-ro-1', step_index: 1, state: 'ACTIVE', step_type: 'agent_response', text_delta: 'I will inspect the workspace.' } },
+  { event: 'step_update', step_update: { conversation_id: 'conv-ro-1', step_index: 1, state: 'DONE', step_type: 'agent_response', text_delta: '\n' } },
+  { event: 'step_update', step_update: { conversation_id: 'conv-ro-1', step_index: 2, state: 'ACTIVE', step_type: 'tool', tool_name: 'run_command', tool_info: { name: 'run_command', parameters: { CommandLine: 'find . -maxdepth 4' } } } },
+  { event: 'step_update', step_update: { conversation_id: 'conv-ro-1', step_index: 2, state: 'ERROR', step_type: 'tool', tool_name: 'run_command', tool_info: { name: 'run_command', parameters: { CommandLine: 'find . -maxdepth 4' }, error: { type: 'TOOL_ERROR', message: 'permission check failed for command "find . -maxdepth 4": user denied permission' } } } },
+  { event: 'result', result: { conversation_id: 'conv-ro-1', status: 'SUCCESS', response: 'I will inspect the workspace.\n', denied_actions: [{ action: 'command', display_name: 'RunCommand' }] } },
+];
+const runFake = async (lines, { mode = 'readonly', exitCode = 0 } = {}) => {
+  fs.mkdirSync(dir, { recursive: true });                                           // an earlier test cleans the folder up
+  const bin = path.join(dir, `agy-${Math.random().toString(36).slice(2)}.mjs`);
+  fs.writeFileSync(bin, `process.stdout.write(${JSON.stringify(lines.map(l => JSON.stringify(l)).join('\n') + (lines.length ? '\n' : ''))}); process.exitCode = ${exitCode};\n`);
+  process.env.AGENT_WORLD_TEST_AGY_BIN = bin;
+  try { return await new Promise((resolve) => { const ev = []; startRun({ tool: 'antigravity', sessionId: null, cwd: dir, text: 'move my files', mode, agent: null }, (e) => ev.push(e), () => resolve(ev)); }); }
+  finally { delete process.env.AGENT_WORLD_TEST_AGY_BIN; }
+};
+
+test('a refused command (the real Read-only case) is shown as a failed tool step, and the chat says why instead of "success"', async () => {
+  const ev = await runFake(REAL_READONLY);
+  const blocks = ev.filter(e => e.t === 'blocks').at(-1).blocks;
+  assert.equal(blocks[0].name, 'run_command'); assert.match(blocks[0].summary, /find \. -maxdepth 4/);
+  assert.equal(ev.find(e => e.t === 'result').error, true);
+  const i = ev.findIndex(e => e.t === 'result');
+  assert.deepEqual(ev[i + 1], { t: 'status', text: 'Thinking…' });                 // "Working: run command" ends with the step
+  const done = ev.find(e => e.t === 'done');
+  assert.equal(done.ok, false);
+  assert.match(done.error, /not allowed to: RunCommand/); assert.match(done.error, /only run commands in Full access/); assert.match(done.error, /Change the access mode/);
+});
+
+test('the reply only in the final envelope still shows; no reply at all says so; a process that ends early never stays "working"', async () => {
+  const onlyEnvelope = await runFake([{ event: 'init', conversation_id: 'conv-e-1' }, { event: 'result', result: { conversation_id: 'conv-e-1', status: 'SUCCESS', response: 'Done: moved 2 files.' } }]);
+  assert.equal(onlyEnvelope.filter(e => e.t === 'delta').map(e => e.text).join(''), 'Done: moved 2 files.');
+  assert.deepEqual(onlyEnvelope.find(e => e.t === 'done'), { t: 'done', ok: true, denied: [], error: null });
+
+  const silent = await runFake([{ event: 'init', conversation_id: 'conv-s-1' }, { event: 'result', result: { conversation_id: 'conv-s-1', status: 'SUCCESS', response: '' } }]);
+  assert.match(silent.find(e => e.t === 'done').error, /finished without writing a reply/);
+
+  const cut = await runFake([{ event: 'init', conversation_id: 'conv-c-1' }, { event: 'step_update', step_update: { step_index: 1, state: 'ACTIVE', step_type: 'tool', tool_name: 'run_command', tool_info: {} } }], { exitCode: 1 });
+  assert.ok(cut.some(e => e.t === 'error'), 'an early exit ends the run with an error, so the chat stops showing "Working"');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
